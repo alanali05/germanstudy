@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useContent } from "../data/stories";
 import Dashboard from "../pages/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import Layout from "../components/layout/Layout";
@@ -27,6 +28,9 @@ function OwnerOnly({ children }) {
 }
 
 export default function AppRoutes() {
+  // Subscribing here re-renders every page when the Firestore content changes
+  useContent();
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />

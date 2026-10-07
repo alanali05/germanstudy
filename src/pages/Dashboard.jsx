@@ -1,10 +1,12 @@
-import { useReducer, useState } from "react";
+import { useState } from "react";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import LevelBadge from "../components/LevelBadge";
 import { levels, getLevel } from "../data/levels";
-import { getContent, normalizeContent, saveContent, resetContent } from "../data/stories";
-import { students as builtInStudents, getCustomStudents, saveCustomStudents } from "../data/students";
+import {
+  getContent, normalizeContent, builtIn, saveItem, removeItem, findStory, replaceAllContent, readLocalContent, clearLocalContent,
+} from "../data/stories";
+import { useStudents, createStudent, updateStudent, deleteStudent, readLocalStudents, clearLocalStudents } from "../data/students";
 import { getAnnouncement, setAnnouncement } from "../data/settings";
 
 // Besitzer-Dashboard / داشبۆردا خودانی. Only German + Kurdish (Badini, Arabic script). No English.
@@ -20,13 +22,11 @@ const Bi = ({ de, ku }) => (
   </>
 );
 const OPT = bi("(optional)", "(ڤەبژارتی)");
+const SAVE_FAIL = { ok: false, text: bi("Speichern fehlgeschlagen. Prüfe die Internetverbindung.", "پاراستن سەرنەکەفت. پەیوەندیا ئینتەرنێتێ بپشکنە.") };
+const WAIT = { ok: true, text: bi("Bitte warten…", "تکایە چاڤەڕێ بکە…") };
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const uid = (s) => `${s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item"}-${Math.random().toString(36).slice(2, 6)}`;
-const newCode = (name) => {
-  const first = name.trim().split(/\s+/)[0].toUpperCase().replace(/[^A-Z]/g, "") || "STU";
-  return `${first}-${Math.floor(1000 + Math.random() * 9000)}`;
-};
 const top = () => window.scrollTo({ top: 0, behavior: "smooth" });
 const flat = (col) => Object.entries(getContent()[col]).flatMap(([level, list]) => list.map((x) => ({ ...x, level })));
 const lvTitle = (id) => getLevel(id).title;
@@ -71,10 +71,10 @@ function Row({ title, sub, badge, onEdit, onDelete, onClick, selected }) {
   );
 }
 const Msg = ({ m }) => (m ? <p role="status" className="mt-3 text-sm font-medium" style={{ color: m.ok ? "var(--ok)" : "var(--bad)" }}>{m.text}</p> : null);
-function SubmitRow({ editing, label, onCancel }) {
+function SubmitRow({ editing, label, onCancel, busy }) {
   return (
     <div className="mt-5 flex flex-wrap gap-3">
-      <button className="btn-primary inline-flex items-center gap-2 px-6 py-3">
+      <button disabled={busy} className="btn-primary inline-flex items-center gap-2 px-6 py-3">
         {editing ? <Pencil size={17} /> : <Plus size={18} />}
         {editing ? bi("Änderungen speichern", "گوهۆڕینان بپارێزە") : label}
       </button>
@@ -125,14 +125,75 @@ function TopicFields({ v, set, kind }) {
 const emptyTopic = { level: "a1", titleDe: "", titleKu: "", storyId: "" };
 
 /* ---------------- Overview / Übersicht / گشتی ---------------- */
-function OverviewTab({ go, refresh }) {
+/* One-time helpers: empty database, and data that was saved in this browser before Firebase */
+function SetupBox() {
+  const c = getContent();
+  const [localContent, setLocalContent] = useState(readLocalContent);
+  const [localStudents, setLocalStudents] = useState(readLocalStudents);
+  const [msg, setMsg] = useState(null);
+  const isEmpty = ["stories", "wordTopics", "quizzes"].every((col) => Object.values(c[col]).flat().length === 0);
+  if (!isEmpty && !localContent && localStudents.length === 0 && !msg) return null;
+
+  const run = async (fn, okText) => {
+    setMsg(WAIT);
+    try { await fn(); setMsg({ ok: true, text: okText }); } catch (err) { console.error(err); setMsg(SAVE_FAIL); }
+  };
+  const loadBuiltIn = () => run(() => replaceAllContent(builtIn()), bi("Eingebauter Inhalt geladen ✓", "ناڤەڕۆکا ئامادەکراو هاتە بارکرن ✓"));
+  const uploadContent = () => {
+    if (!window.confirm(bi("Den Inhalt der Datenbank durch den Inhalt aus diesem Browser ersetzen?", "ناڤەڕۆکا داتابەیسێ ب ناڤەڕۆکا ڤی براوسەری بگوهۆڕی؟"))) return;
+    run(async () => { await replaceAllContent(localContent); clearLocalContent(); setLocalContent(null); },
+      bi("Inhalt hochgeladen ✓", "ناڤەڕۆک هاتە بارکرن ✓"));
+  };
+  const uploadStudents = () =>
+    run(async () => {
+      for (const s of localStudents) {
+        try {
+          await createStudent({ name: s.name, className: s.className || "", level: s.level || "A1" }, s.code);
+        } catch (err) {
+          if (err.code !== "auth/email-already-in-use") throw err; // already moved
+        }
+      }
+      clearLocalStudents(); setLocalStudents([]);
+    }, bi("Schüler übertragen ✓ Ihre alten Codes funktionieren weiter.", "قوتابی هاتنە ڤەگوهاستن ✓ کۆدێن وان یێن کەڤن کار دکەن."));
+
+  return (
+    <Box title={bi("Einrichtung", "ئامادەکرن")} active>
+      <div className="space-y-4">
+        {isEmpty && (
+          <div>
+            <p className="mb-2 text-sm text-muted"><Bi de="Die Datenbank ist noch leer." ku="داتابەیس هێشتا ڤالایە." /></p>
+            <button onClick={loadBuiltIn} className="btn-primary px-5 py-3">{bi("Eingebauten Inhalt laden", "ناڤەڕۆکا ئامادەکراو بار بکە")}</button>
+          </div>
+        )}
+        {localContent && (
+          <div>
+            <p className="mb-2 text-sm text-muted">
+              <Bi de="In diesem Browser wurde Inhalt aus der Zeit vor der Datenbank gefunden." ku="د ڤی براوسەری دا ناڤەڕۆکەک ژ بەری داتابەیسێ هاتە دیتن." />
+            </p>
+            <button onClick={uploadContent} className="btn-primary px-5 py-3">{bi("Inhalt in die Datenbank hochladen", "ناڤەڕۆکێ بۆ داتابەیسێ بار بکە")}</button>
+          </div>
+        )}
+        {localStudents.length > 0 && (
+          <div>
+            <p className="mb-2 text-sm text-muted">
+              <Bi de={`${localStudents.length} Schüler aus diesem Browser gefunden.`} ku={`${localStudents.length} قوتابی د ڤی براوسەری دا هاتنە دیتن.`} />
+            </p>
+            <button onClick={uploadStudents} className="btn-primary px-5 py-3">{bi("Schüler übertragen", "قوتابیان ڤەگوهێزە")}</button>
+          </div>
+        )}
+        <Msg m={msg} />
+      </div>
+    </Box>
+  );
+}
+
+function OverviewTab({ go }) {
   const c = getContent();
   const [note, setNote] = useState(getAnnouncement());
   const [msg, setMsg] = useState(null);
   const max = Math.max(1, ...levels.map((l) => c.stories[l.id].length));
-  const saveNote = () => {
-    setAnnouncement(note);
-    refresh();
+  const saveNote = async () => {
+    try { await setAnnouncement(note); } catch { return setMsg(SAVE_FAIL); }
     setMsg({
       ok: true,
       text: note.trim()
@@ -150,6 +211,7 @@ function OverviewTab({ go, refresh }) {
 
   return (
     <>
+      <SetupBox />
       <Box title={bi("Schnellaktionen", "کارێن بلەز")}>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {quick.map(([id, label]) => (
@@ -197,7 +259,7 @@ function OverviewTab({ go, refresh }) {
 
 /* ---------------- Stories / Geschichten / چیرۆک ---------------- */
 const emptyStory = { level: "a1", titleDe: "", titleKu: "", readTime: "", coverImage: "", text: "" };
-function StoriesTab({ refresh }) {
+function StoriesTab() {
   const [f, setF] = useState(emptyStory);
   const [edit, setEdit] = useState(null);
   const [q, setQ] = useState("");
@@ -212,7 +274,7 @@ function StoriesTab({ refresh }) {
   };
   const cancel = () => { setEdit(null); setF(emptyStory); setMsg(null); };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     const segments = f.text.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
       const [de, ...rest] = l.split("||");
@@ -220,25 +282,16 @@ function StoriesTab({ refresh }) {
     });
     if (!f.titleDe.trim() || segments.length === 0)
       return setMsg({ ok: false, text: bi("Bitte gib einen deutschen Titel und mindestens einen Satz ein.", "تکایە ناڤونیشانەکێ ئەلمانی و کێم ئێک رستە بنڤیسە.") });
-    const data = clone(getContent());
-    const base = { titleDe: f.titleDe.trim(), titleKu: f.titleKu.trim(), level: f.level.toUpperCase(), readTime: f.readTime.trim(), coverImage: f.coverImage.trim(), segments };
-    if (edit) {
-      const old = data.stories[edit.level].find((s) => s.id === edit.id);
-      data.stories[edit.level] = data.stories[edit.level].filter((s) => s.id !== edit.id);
-      data.stories[f.level].push({ ...old, ...base });
-      setEdit(null);
-    } else {
-      data.stories[f.level].push({ id: uid(f.titleDe), ...base });
-    }
-    saveContent(data); refresh(); setF(emptyStory);
+    const base = { titleDe: f.titleDe.trim(), titleKu: f.titleKu.trim(), level: f.level, readTime: f.readTime.trim(), coverImage: f.coverImage.trim(), segments };
+    const story = edit ? { ...findStory(edit.level, edit.id), id: edit.id, ...base } : { id: uid(f.titleDe), ...base };
+    try { await saveItem("stories", story); } catch { return setMsg(SAVE_FAIL); }
+    setEdit(null); setF(emptyStory);
     setMsg({ ok: true, text: edit ? bi("Geschichte aktualisiert ✓", "چیرۆک هاتە نووکرن ✓") : bi("Geschichte hinzugefügt ✓", "چیرۆک هاتە زێدەکرن ✓") });
   };
 
-  const del = (level, id, title) => {
+  const del = (id, title) => {
     if (!window.confirm(bi(`Die Geschichte „${title}“ löschen?`, `چیرۆکا «${title}» بهێتە سڕین؟`))) return;
-    const data = clone(getContent());
-    data.stories[level] = data.stories[level].filter((s) => s.id !== id);
-    saveContent(data); refresh();
+    removeItem("stories", id).catch(() => setMsg(SAVE_FAIL));
   };
   const list = flat("stories").filter((s) => `${s.titleDe} ${s.titleKu}`.toLowerCase().includes(q.trim().toLowerCase()));
 
@@ -272,7 +325,7 @@ function StoriesTab({ refresh }) {
         {list.length === 0 && <p className="text-muted">{bi("Keine Geschichten gefunden.", "چ چیرۆکەک نەهاتە دیتن.")}</p>}
         {list.map((s) => (
           <Row key={s.id} badge={<LevelBadge level={getLevel(s.level)} />} title={s.titleDe} sub={bi(`${s.segments.length} Sätze`, `${s.segments.length} رستە`)}
-            onEdit={() => startEdit(s)} onDelete={() => del(s.level, s.id, s.titleDe)} />
+            onEdit={() => startEdit(s)} onDelete={() => del(s.id, s.titleDe)} />
         ))}
       </Box>
     </>
@@ -351,7 +404,7 @@ const CFG = {
   },
 };
 
-function TopicTab({ kind, refresh }) {
+function TopicTab({ kind }) {
   const cfg = CFG[kind];
   const topics = flat(cfg.col);
   const [sel, setSel] = useState("");
@@ -368,25 +421,22 @@ function TopicTab({ kind, refresh }) {
   const setItem = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const cancelItem = () => { setEditItem(null); setF(cfg.empty); setMsg(null); };
 
-  const submitItem = (e) => {
+  const submitItem = async (e) => {
     e.preventDefault();
     const item = cfg.toItem(f);
     if (typeof item === "string") return setMsg({ ok: false, text: item });
     if (eff === "new" && !nt.titleDe.trim()) return setMsg({ ok: false, text: cfg.needTitle });
-    const data = clone(getContent());
-    let key = eff;
+    let t;
     if (eff === "new") {
-      const t = { id: uid(nt.titleDe), titleDe: nt.titleDe.trim(), titleKu: nt.titleKu.trim(), [cfg.items]: [item] };
+      t = { id: uid(nt.titleDe), level: nt.level, titleDe: nt.titleDe.trim(), titleKu: nt.titleKu.trim(), [cfg.items]: [item] };
       if (nt.storyId) t.storyId = nt.storyId;
-      data[cfg.col][nt.level].push(t);
-      key = `${nt.level}/${t.id}`;
-      setNt(emptyTopic);
     } else {
-      const [lv, id] = eff.split("/");
-      const t = data[cfg.col][lv].find((x) => x.id === id);
+      t = clone(current);
       if (editItem !== null) t[cfg.items][editItem] = item; else t[cfg.items].push(item);
     }
-    saveContent(data); setSel(key); refresh();
+    try { await saveItem(cfg.col, t); } catch { return setMsg(SAVE_FAIL); }
+    if (eff === "new") setNt(emptyTopic);
+    setSel(`${t.level}/${t.id}`);
     setEditItem(null); setF(cfg.empty);
     setMsg({
       ok: true,
@@ -395,29 +445,25 @@ function TopicTab({ kind, refresh }) {
   };
 
   const delItem = (i) => {
-    const [lv, id] = eff.split("/");
-    const data = clone(getContent());
-    data[cfg.col][lv].find((x) => x.id === id)[cfg.items].splice(i, 1);
-    saveContent(data); refresh(); if (editItem === i) cancelItem();
+    const t = clone(current);
+    t[cfg.items].splice(i, 1);
+    saveItem(cfg.col, t).catch(() => setMsg(SAVE_FAIL));
+    if (editItem === i) cancelItem();
   };
 
-  const saveTopic = (e) => {
+  const saveTopic = async (e) => {
     e.preventDefault();
     if (!editTopic.titleDe.trim()) return setMsg({ ok: false, text: bi("Das Thema braucht einen deutschen Titel.", "دڤێت بابەت ناڤونیشانەکێ ئەلمانی هەبیت.") });
-    const data = clone(getContent());
-    const old = data[cfg.col][editTopic.oldLevel].find((x) => x.id === editTopic.id);
-    data[cfg.col][editTopic.oldLevel] = data[cfg.col][editTopic.oldLevel].filter((x) => x.id !== editTopic.id);
-    const upd = { ...old, titleDe: editTopic.titleDe.trim(), titleKu: editTopic.titleKu.trim() };
+    const old = topics.find((x) => x.id === editTopic.id && x.level === editTopic.oldLevel);
+    const upd = { ...old, level: editTopic.level, titleDe: editTopic.titleDe.trim(), titleKu: editTopic.titleKu.trim() };
     if (editTopic.storyId) upd.storyId = editTopic.storyId; else delete upd.storyId;
-    data[cfg.col][editTopic.level].push(upd);
-    saveContent(data); setSel(`${editTopic.level}/${editTopic.id}`); setEditTopic(null); refresh();
+    try { await saveItem(cfg.col, upd); } catch { return setMsg(SAVE_FAIL); }
+    setSel(`${editTopic.level}/${editTopic.id}`); setEditTopic(null);
     setMsg({ ok: true, text: bi("Details aktualisiert ✓", "وردەکاری هاتنە نووکرن ✓") });
   };
   const delTopic = (t) => {
     if (!window.confirm(bi(`„${t.titleDe}“ mit allem Inhalt löschen?`, `«${t.titleDe}» ب هەمی ناڤەڕۆکێ ڤە بهێتە سڕین؟`))) return;
-    const data = clone(getContent());
-    data[cfg.col][t.level] = data[cfg.col][t.level].filter((x) => x.id !== t.id);
-    saveContent(data); refresh();
+    removeItem(cfg.col, t.id).catch(() => setMsg(SAVE_FAIL));
   };
 
   const items = (current?.[cfg.items] || []).map((it, i) => ({ it, i })).filter(({ it, i }) => `${cfg.row(it, i).title}`.toLowerCase().includes(q.trim().toLowerCase()));
@@ -482,21 +528,34 @@ function TopicTab({ kind, refresh }) {
 
 /* ---------------- Students / Schüler / قوتابی ---------------- */
 const emptyStu = { name: "", className: "", level: "A1" };
-function StudentsTab({ refresh }) {
+function StudentsTab({ students }) {
   const [f, setF] = useState(emptyStu);
-  const [edit, setEdit] = useState(null);
+  const [edit, setEdit] = useState(null); // uid of the student being edited
   const [q, setQ] = useState("");
-  const custom = getCustomStudents();
-  const submit = (e) => {
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const submit = async (e) => {
     e.preventDefault();
     const item = { name: f.name.trim(), className: f.className.trim(), level: f.level };
-    if (edit) saveCustomStudents(custom.map((s) => (s.code === edit ? { ...s, ...item } : s)));
-    else saveCustomStudents([...custom, { code: newCode(f.name), ...item }]);
-    setEdit(null); setF(emptyStu); refresh();
+    setBusy(true); setMsg(WAIT);
+    try {
+      if (edit) {
+        await updateStudent(edit, item);
+        setMsg({ ok: true, text: bi("Änderungen gespeichert ✓", "گوهۆڕین هاتنە پاراستن ✓") });
+      } else {
+        const code = await createStudent(item);
+        setMsg({ ok: true, text: bi(`Schüler erstellt ✓ Anmeldecode: ${code}`, `قوتابی هاتە دروستکرن ✓ کۆدێ چوونەژوورێ: ${code}`) });
+      }
+      setEdit(null); setF(emptyStu);
+    } catch (err) {
+      console.error(err);
+      setMsg(SAVE_FAIL);
+    }
+    setBusy(false);
   };
-  const del = (code) => {
+  const del = (uid) => {
     if (window.confirm(bi("Diesen Schüler löschen? Sein Anmeldecode funktioniert dann nicht mehr.", "ئەڤ قوتابیە بهێتە سڕین؟ کۆدێ چوونەژوورا وی ئێدی کار ناکەت."))) {
-      saveCustomStudents(custom.filter((s) => s.code !== code)); refresh();
+      deleteStudent(uid).catch(() => setMsg(SAVE_FAIL));
     }
   };
   const match = (s) => `${s.name} ${s.code} ${s.className}`.toLowerCase().includes(q.trim().toLowerCase());
@@ -512,17 +571,16 @@ function StudentsTab({ refresh }) {
               <select className="field" value={f.level} onChange={(e) => setF({ ...f, level: e.target.value })}>{levels.map((l) => <option key={l.id}>{l.title}</option>)}</select>
             </Field>
           </div>
-          <SubmitRow editing={!!edit} label={bi("Anmeldecode erstellen", "کۆدێ چوونەژوورێ دروست بکە")} onCancel={() => { setEdit(null); setF(emptyStu); }} />
+          <SubmitRow editing={!!edit} busy={busy} label={bi("Anmeldecode erstellen", "کۆدێ چوونەژوورێ دروست بکە")} onCancel={() => { setEdit(null); setF(emptyStu); setMsg(null); }} />
+          <Msg m={msg} />
         </form>
       </Box>
-      <Box title={bi("Schüler und Anmeldecodes", "قوتابی و کۆدێن چوونەژوورێ")}>
+      <Box title={bi(`Schüler und Anmeldecodes (${students.length})`, `قوتابی و کۆدێن چوونەژوورێ (${students.length})`)}>
         <SearchBox value={q} onChange={setQ} />
-        {builtInStudents.filter((s) => s.role !== "owner" && match(s)).map((s) => (
-          <Row key={s.code} title={s.name} sub={`${s.code} · ${s.className} · ${s.level} (${bi("fest eingebaut", "ئامادەکراو")})`} />
-        ))}
-        {custom.filter(match).map((s) => (
-          <Row key={s.code} title={s.name} sub={`${s.code} · ${s.className} · ${s.level}`}
-            onEdit={() => { setEdit(s.code); setF({ name: s.name, className: s.className, level: s.level }); top(); }} onDelete={() => del(s.code)} />
+        {students.length === 0 && <p className="text-muted">{bi("Noch keine Schüler.", "هێشتا چ قوتابی نینن.")}</p>}
+        {students.filter(match).map((s) => (
+          <Row key={s.uid} title={s.name} sub={`${s.code} · ${s.className} · ${s.level}`}
+            onEdit={() => { setEdit(s.uid); setF({ name: s.name, className: s.className, level: s.level }); setMsg(null); top(); }} onDelete={() => del(s.uid)} />
         ))}
       </Box>
     </>
@@ -530,34 +588,41 @@ function StudentsTab({ refresh }) {
 }
 
 /* ---------------- Backup / Sicherung / پاشەکەوت ---------------- */
-function BackupTab({ refresh }) {
+function BackupTab() {
   const [msg, setMsg] = useState(null);
+  const run = async (fn, okText) => {
+    setMsg(WAIT);
+    try { await fn(); setMsg({ ok: true, text: okText }); } catch (err) { console.error(err); setMsg(SAVE_FAIL); }
+  };
   const exportFile = () => {
     const blob = new Blob([JSON.stringify(getContent(), null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = "lingua-content.json"; a.click();
     URL.revokeObjectURL(a.href);
   };
-  const importFile = (e) => {
+  const importFile = async (e) => {
     const file = e.target.files?.[0]; e.target.value = "";
     if (!file) return;
-    file.text().then((txt) => {
-      saveContent(normalizeContent(JSON.parse(txt))); refresh();
-      setMsg({ ok: true, text: bi("Inhalt importiert ✓", "ناڤەڕۆک هاتە هاوردن ✓") });
-    }).catch(() => setMsg({ ok: false, text: bi("Diese Datei ist keine gültige Inhalts-Sicherung.", "ئەڤ فایلە پاشەکەوتەکا دروست نینە.") }));
+    let data;
+    try {
+      data = normalizeContent(JSON.parse(await file.text()));
+    } catch {
+      return setMsg({ ok: false, text: bi("Diese Datei ist keine gültige Inhalts-Sicherung.", "ئەڤ فایلە پاشەکەوتەکا دروست نینە.") });
+    }
+    if (!window.confirm(bi("Den gesamten Inhalt für alle Schüler durch diese Datei ersetzen?", "هەمی ناڤەڕۆکێ بۆ هەمی قوتابیان ب ڤی فایلی بگوهۆڕی؟"))) return;
+    run(() => replaceAllContent(data), bi("Inhalt importiert ✓", "ناڤەڕۆک هاتە هاوردن ✓"));
   };
   const reset = () => {
     if (window.confirm(bi("Alles entfernen, was du hinzugefügt hast, und zum eingebauten Inhalt zurückgehen?", "هەمی ئەوێ تە زێدە کری بسڕی و بزڤڕی بۆ ناڤەڕۆکا ئامادەکراو؟"))) {
-      resetContent(); refresh();
-      setMsg({ ok: true, text: bi("Inhalt zurückgesetzt ✓", "ناڤەڕۆک زڤڕیە ✓") });
+      run(() => replaceAllContent(builtIn()), bi("Inhalt zurückgesetzt ✓", "ناڤەڕۆک زڤڕیە ✓"));
     }
   };
   return (
     <Box title={bi("Sicherung", "پاشەکەوت")}>
       <p className="mb-4 rounded-xl bg-soft p-4 text-sm text-muted">
         <Bi
-          de={<>Wichtig: Im Moment wird alles, was du hier änderst, <b className="text-fg">nur in diesem Browser</b> gespeichert. Schüler auf anderen Geräten sehen es nicht. Mit „Exportieren“ machst du eine Kopie, mit „Importieren“ lädst du sie auf einem anderen Gerät.</>}
-          ku={<>گرنگ: نوکە هەرچی تو لێرە بگوهۆڕی <b className="text-fg">تنێ د ڤی براوسەری دا</b> دهێتە پاراستن. قوتابیێن د ئامیرێن دی دا نابینن. ب «هەناردەکرن» کۆپیەکێ وەرگرە، ب «هاوردن» د ئامیرەکا دی دا بار بکە.</>}
+          de={<>Alle Inhalte werden in der Datenbank gespeichert, und alle Schüler sehen Änderungen sofort. Mit „Exportieren“ machst du eine Sicherungskopie. <b className="text-fg">„Importieren“ und „Zurücksetzen“ ersetzen den gesamten Inhalt für alle Schüler.</b></>}
+          ku={<>هەمی ناڤەڕۆک د داتابەیسێ دا دهێتە پاراستن، و هەمی قوتابی گوهۆڕینان دەستبەجێ دبینن. ب «هەناردەکرن» کۆپیەکا پاشەکەوتێ وەرگرە. <b className="text-fg">«هاوردن» و «زڤڕاندن» هەمی ناڤەڕۆکێ بۆ هەمی قوتابیان دگوهۆڕن.</b></>}
         />
       </p>
       <div className="flex flex-wrap gap-3">
@@ -584,22 +649,22 @@ const tabs = [
 
 export default function Dashboard() {
   const [tab, setTab] = useState("overview");
-  const [, refresh] = useReducer((n) => n + 1, 0);
+  const students = useStudents();
   const c = getContent();
   const sum = (col, key) => Object.values(c[col]).flat().reduce((n, t) => n + (t[key]?.length || 0), 0);
   const counts = [
     [bi("Geschichten", "چیرۆک"), Object.values(c.stories).flat().length, "📖"],
     [bi("Wörter", "وشە"), sum("wordTopics", "words"), "🔤"],
     [bi("Fragen", "پرسیار"), sum("quizzes", "questions"), "❓"],
-    [bi("Schüler", "قوتابی"), builtInStudents.filter((s) => s.role !== "owner").length + getCustomStudents().length, "🎓"],
+    [bi("Schüler", "قوتابی"), students.length, "🎓"],
   ];
   const body = {
-    overview: <OverviewTab refresh={refresh} go={setTab} />,
-    stories: <StoriesTab refresh={refresh} />,
-    words: <TopicTab kind="words" refresh={refresh} />,
-    quiz: <TopicTab kind="quiz" refresh={refresh} />,
-    students: <StudentsTab refresh={refresh} />,
-    backup: <BackupTab refresh={refresh} />,
+    overview: <OverviewTab go={setTab} />,
+    stories: <StoriesTab />,
+    words: <TopicTab kind="words" />,
+    quiz: <TopicTab kind="quiz" />,
+    students: <StudentsTab students={students} />,
+    backup: <BackupTab />,
   }[tab];
 
   return (

@@ -1,52 +1,49 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "../lib/firebase";
+import { loadProfile, saveAvatar } from "../data/students";
 
 const AuthContext = createContext(null);
-const avatarKey = (code) => `avatar:${code}`;
 
-function withAvatar(student) {
-  let avatar = null;
-  try {
-    avatar = localStorage.getItem(avatarKey(student.code));
-  } catch {}
-  return { ...student, avatar };
-}
-
+// Firebase keeps the session; user = profile from Firestore + role + avatar (see data/students.js)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("auth");
-      if (saved) setUser(withAvatar(JSON.parse(saved).user));
-    } catch {
-      localStorage.removeItem("auth");
-    }
-    setLoading(false);
-  }, []);
-
-  const login = (student, token) => {
-    localStorage.setItem("auth", JSON.stringify({ user: student, token }));
-    setUser(withAvatar(student));
-  };
+  useEffect(
+    () =>
+      onAuthStateChanged(auth, async (fbUser) => {
+        if (!fbUser) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        try {
+          const profile = await loadProfile(fbUser);
+          if (!profile) return signOut(auth); // runs this listener again with null
+          setUser(profile);
+        } catch (err) {
+          console.error("Could not load profile:", err);
+          setUser(null);
+        }
+        setLoading(false);
+      }),
+    []
+  );
 
   const logout = () => {
-    localStorage.removeItem("auth");
     try { sessionStorage.removeItem("welcomed"); } catch { /* ignore */ }
-    setUser(null);
+    return signOut(auth);
   };
 
   // dataUrl = new picture, or null to remove it
   const setAvatar = (dataUrl) => {
-    try {
-      if (dataUrl) localStorage.setItem(avatarKey(user.code), dataUrl);
-      else localStorage.removeItem(avatarKey(user.code));
-    } catch {}
     setUser((u) => ({ ...u, avatar: dataUrl }));
+    return saveAvatar(user.uid, dataUrl);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, setAvatar }}>
+    <AuthContext.Provider value={{ user, loading, logout, setAvatar }}>
       {children}
     </AuthContext.Provider>
   );

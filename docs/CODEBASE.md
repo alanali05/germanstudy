@@ -1,6 +1,10 @@
 # CODEBASE.md — LinguaSchool architecture
 
-LinguaSchool is a client-only React single-page app for learning German, built for speakers of Kurdish (Badini, Arabic script). It has no server, database, or API. All data is either bundled into the JS or kept in the browser's `localStorage`.
+LinguaSchool is a React single-page app for learning German, built for speakers of Kurdish (Badini, Arabic script). There is no server of our own. The browser talks directly to **Firebase**:
+- **Auth** (Email/Password) for login codes.
+- **Cloud Firestore** for content, students, the announcement, and avatars.
+
+Access is enforced by `firestore.rules`.
 
 ---
 
@@ -13,15 +17,17 @@ LinguaSchool is a client-only React single-page app for learning German, built f
  src/main.jsx ─▶ │ <BrowserRouter>                                                    │
                  │   <ThemeProvider>      theme: dark|light  → html[data-theme]       │
                  │     <LangProvider>     lang: ku|de        → html[lang,dir]  t()/tn()│
-                 │       <AuthProvider>   user, login, logout, setAvatar              │
-                 │         <App> → <AppRoutes>                                        │
+                 │       <AuthProvider>   onAuthStateChanged → user (profile), logout  │
+                 │         <App> → <AppRoutes>   useContent() → re-render on changes  │
                  │                                                                    │
-                 │ Pages ──read──▶ data/stories.js (mutable singleton) ◀──write── Dashboard
-                 │                     │                                              │
-                 │                     ├─ builtIn(): data/storyFiles/storydata.js     │
-                 │                     └─ localStorage "ls-content-v2"                │
-                 │ Login ─▶ services/api.js ─▶ data/students.js (+ localStorage)      │
-                 └────────────────────────────────────────────────────────────────────┘
+                 │ Pages ──sync getters──▶ data/stories.js (live in-memory copy)      │
+                 │                            ▲ onSnapshot           │ saveItem etc.  │
+                 │ Dashboard ──writes─────────┼──────────────────────┘ (owner only)   │
+                 │ Login ─▶ services/api.js ─▶ signInWithEmailAndPassword             │
+                 └────────────────────────────┼───────────────────────────────────────┘
+                                              ▼
+              Firebase:  Auth (code accounts)   Firestore: stories, wordTopics, quizzes,
+                                                settings, students, avatars  (+ firestore.rules)
  Hosting: Vercel static build (dist/), every path rewritten to /index.html
 ```
 
@@ -36,6 +42,7 @@ LinguaSchool is a client-only React single-page app for learning German, built f
 | Build | Vite 8 with `@vitejs/plugin-react` and `@tailwindcss/vite` |
 | Styling | Tailwind CSS v4 plus custom CSS classes and CSS variables in `src/index.css` |
 | Icons | Custom `Icon.jsx` SVG set, and `lucide-react` (ThemeToggle, Dashboard) |
+| Backend | Firebase JS SDK v12: Auth (Email/Password) and Cloud Firestore (`europe-west3`), Spark (free) plan |
 | Speech | Web Speech API (`speechSynthesis`, `de-DE`) |
 | Lint | ESLint 10 flat config: `js.recommended`, `react-hooks`, `react-refresh/vite` |
 | Deploy | Vercel (`vercel.json` SPA rewrite) |
@@ -51,29 +58,32 @@ germanstudy/
 ├── vite.config.js             # plugins: tailwindcss(), react()
 ├── eslint.config.js
 ├── vercel.json                # rewrites /(.*) → /index.html
-├── public/                    # favicon.svg, icons.svg
+├── firestore.rules            # Firestore security rules (paste into the console to deploy)
+├── .env.local                 # VITE_FIREBASE_* config (git-ignored)
+├── docs/                      # CLAUDE.md, CODEBASE.md
+├── public/                    # favicon.svg, icons.svg, images/hallo.png (seed story cover)
 └── src/
     ├── main.jsx               # provider tree + router
     ├── App.jsx                # renders <AppRoutes/>
-    ├── config.js              # APP_NAME, SPEECH_LANG
+    ├── config.js              # APP_NAME, SPEECH_LANG, OWNER_UID, CODE_EMAIL_DOMAIN
     ├── i18n.js                # dict: { key: { de, ku } } for all student UI text
     ├── index.css              # theme tokens, component classes, animations
-    ├── images/hallo.png       # cover image for the built-in A1 story
+    ├── lib/firebase.js        # initializeApp, auth, db (Firestore), firebaseConfig
     ├── context/
     │   ├── ThemeContext.jsx   # theme state + toggle
     │   ├── LangContext.jsx    # lang state, t(), tn(), RTL handling
-    │   └── AuthContext.jsx    # user session, avatar storage
+    │   └── AuthContext.jsx    # Firebase session → profile, logout, setAvatar
     ├── routes/
-    │   ├── AppRoutes.jsx      # route table + OwnerOnly guard
-    │   └── ProtectedRoute.jsx # redirect to /login when logged out
-    ├── services/api.js        # loginWithCode() — fake, local lookup
+    │   ├── AppRoutes.jsx      # route table + OwnerOnly guard; subscribes to content
+    │   └── ProtectedRoute.jsx # redirect to /login; starts content sync; waits for it
+    ├── services/api.js        # loginWithCode() → Firebase Auth
     ├── utils/speak.js         # speak(text, onEnd), stopSpeaking()
     ├── data/
     │   ├── levels.js          # A1..B2 metadata + getLevel()
-    │   ├── stories.js         # CONTENT STORE (stories, wordTopics, quizzes)
+    │   ├── stories.js         # CONTENT STORE: Firestore sync, getters, writes, seed, migration
     │   ├── storyFiles/storydata.js  # built-in story seed data (v1 shape)
-    │   ├── students.js        # built-in owner + dashboard students
-    │   └── settings.js        # announcement get/set
+    │   ├── students.js        # profiles, avatars, student accounts (create/update/delete)
+    │   └── settings.js        # re-exports announcement get/set from stories.js
     ├── components/
     │   ├── layout/Layout.jsx  # sidebar (desktop), top bar + bottom tabs (mobile)
     │   ├── Welcome.jsx        # full-screen greeting, once per session
@@ -105,8 +115,10 @@ germanstudy/
 2. `src/main.jsx` renders `StrictMode > BrowserRouter > ThemeProvider > LangProvider > AuthProvider > App`.
 3. `ThemeProvider` starts from the existing `data-theme` and saves changes.
 4. `LangProvider` reads `localStorage.lang` (default `"ku"`). It sets `<html lang>` and `<html dir>` (`rtl` for `ku`) and saves changes.
-5. `AuthProvider` restores `localStorage.auth` in an effect. While that runs, `loading=true`, so `ProtectedRoute` shows "Loading…".
-6. `AppRoutes` renders the matching route.
+5. `src/lib/firebase.js` initializes the Firebase app, Auth, and Firestore from the `VITE_FIREBASE_*` env vars. This happens on import.
+6. `AuthProvider` subscribes to `onAuthStateChanged`. Firebase restores the saved session from IndexedDB, then `loadProfile` reads `students/{uid}` and `avatars/{uid}`. Until then `loading=true`, and `ProtectedRoute` shows "Loading…".
+7. Once there is a user, `ProtectedRoute` calls `startContentSync()`. It keeps showing "Loading…" until all four Firestore listeners have sent their first snapshot (`ready`).
+8. `AppRoutes` renders the matching route. Because it calls `useContent()`, any later Firestore change re-renders the routes.
 
 ---
 
@@ -149,15 +161,34 @@ All three learning sections follow the same **three-step drill-down: Levels → 
 - `tn(key, n)`: uses `key.one` when `n === 1` and that key exists, and passes `{ n }`.
 
 ### AuthContext (`useAuth`)
-- `{ user, loading, login(student, token), logout(), setAvatar(dataUrl|null) }`.
-- `user` is a student record `{ code, name, className, level: "A1".., role? }` with `avatar` merged in from `localStorage["avatar:<code>"]`.
-- `logout` clears `auth` and the session `welcomed` flag.
+- `{ user, loading, logout(), setAvatar(dataUrl|null) }`.
+- `user` = `{ uid, code, name, className, level: "A1"…, role: "owner"|"student", avatar }`.
+  - It's built by `loadProfile(fbUser)` in `data/students.js`.
+  - `role` is computed by comparing `uid` to `OWNER_UID`; it is not stored.
+  - If an account has no `students` document (a deleted student), it is signed out again.
+- `logout` clears the session `welcomed` flag and calls `signOut(auth)`.
+- `setAvatar` updates the user in state right away, then writes `avatars/{uid}`. It returns a promise so Profile can show an error if the write fails.
 
 ---
 
 ## 7. Data layer
 
-There is no fetching. Pages import plain functions from `src/data/*` and call them during render.
+Pages import plain **synchronous** getter functions from `src/data/*` and call them during render. The getters read an in-memory copy that Firestore `onSnapshot` listeners keep up to date (see 7.2).
+
+### 7.0 Firestore collections and rules
+
+| Path | Fields | Read | Write |
+|---|---|---|---|
+| `stories/{id}` | `level` (a1…b2), `order`, `titleDe`, `titleKu`, `readTime?`, `coverImage?`, `segments[{de,ku}]` | member | owner |
+| `wordTopics/{id}` | `level`, `order`, `titleDe`, `titleKu`, `storyId?`, `words[{wordDe,wordKu,sentenceDe,sentenceKu}]` | member | owner |
+| `quizzes/{id}` | `level`, `order`, `titleDe`, `titleKu`, `storyId?`, `questions[{questionDe,questionKu,options[],correctAnswer}]` | member | owner |
+| `settings/announcement` | `text` | member | owner |
+| `students/{uid}` | `code`, `name`, `className`, `level` ("A1"…) | owner, or the student themself | owner |
+| `avatars/{uid}` | `dataUrl` (string < 400 kB) | the user themself or owner (if member) | the user themself or owner (if member) |
+
+- **owner** = `request.auth.uid == OWNER_UID`. The uid is hard-coded in `firestore.rules` and must match `src/config.js`.
+- **member** = the owner, or a signed-in user whose `students/{uid}` document exists. Deleting that document revokes access.
+- The rules are deployed by pasting them into Firebase console → Firestore → Rules. There is no CLI setup.
 
 ### 7.1 Levels — `data/levels.js`
 ```js
@@ -168,7 +199,7 @@ Level descriptions and names live in i18n (`level.a1`, `level.a1.desc`, …).
 
 ### 7.2 Content store — `data/stories.js`
 
-**v2 shape (current):**
+**v2 shape.** This is the in-memory copy, and also the format used for export and import:
 ```js
 {
   version: 2,
@@ -176,7 +207,7 @@ Level descriptions and names live in i18n (`level.a1`, `level.a1.desc`, …).
   wordTopics: { a1: WordTopic[], a2, b1, b2 },
   quizzes:    { a1: Quiz[],      a2, b1, b2 },
 }
-Story     = { id, titleDe, titleKu, level /*display text*/, readTime?, coverImage?, segments: [{ de, ku }] }
+Story     = { id, titleDe, titleKu, readTime?, coverImage?, segments: [{ de, ku }] }   // + level, order from Firestore
 WordTopic = { id, titleDe, titleKu, storyId?, words: [{ wordDe, wordKu, sentenceDe, sentenceKu }] }
 Quiz      = { id, titleDe, titleKu, storyId?, questions: [{ questionDe, questionKu, options: string[], correctAnswer: number }] }
 ```
@@ -185,12 +216,13 @@ Quiz      = { id, titleDe, titleKu, storyId?, questions: [{ questionDe, question
 
 **Lifecycle:**
 ```
-module load → load():
-   localStorage "ls-content-v2" → normalizeContent()
-   else "ls-content-v1"         → normalizeContent()  (v1 → v2)
-   else builtIn()               → fromStoryMap({ a1: [a1GreetingsStory, a2PersoenlicheInformationenStory], a2:[], b1:[], b2:[] })
-let content = …   // singleton, mutated only through saveContent/resetContent
+startContentSync()            (called by ProtectedRoute when user.uid is set; returns stop())
+  onSnapshot(stories | wordTopics | quizzes | settings/announcement)
+    → rebuild(): group docs by `level`, sort by `order`  → state = { content, announcement, ready }
+    → notify useContent() subscribers (AppRoutes re-renders everything)
+stop() (logout) → listeners closed, state reset to empty / not ready
 ```
+`builtIn()` is now **only a seed**. It never loads automatically. The owner applies it from the Dashboard ("Eingebauten Inhalt laden" when the database is empty, or "Auf Standard zurücksetzen").
 
 **API:**
 | Function | Purpose |
@@ -201,27 +233,48 @@ let content = …   // singleton, mutated only through saveContent/resetContent
 | `quizzesOf(lv)`, `findQuiz(lv, id)` | quizzes by level |
 | `linkedWords(storyId)` | all words from every topic linked to a story (any level) |
 | `linkedWordTopics(storyId)`, `linkedQuizzes(storyId)` | linked non-empty topics and quizzes, each with `level` added |
-| `normalizeContent(d)` | validates and upgrades v1/v2 input (used by load and Import) |
-| `saveContent(next)` | replaces the singleton and saves it |
-| `resetContent()` | goes back to `builtIn()` and removes both storage keys |
-
-> The store is **not reactive**. Student pages read it on each render, which is fine because content only changes from the Dashboard. The Dashboard re-renders itself after each write with `useReducer` (`refresh`).
+| `getAnnouncement()` | current announcement text |
+| `useContent()` | `useSyncExternalStore` hook that returns `{ content, announcement, ready }` |
+| `startContentSync()` | opens the listeners and returns the stop function |
+| `normalizeContent(d)` | validates and upgrades v1/v2 input (used by Import and migration) |
+| `builtIn()` | the seed content (v2) built from `storydata.js` |
+| `saveItem(col, item)` | `setDoc` of the whole item. `id` becomes the document id; `order` defaults to `Date.now()` |
+| `removeItem(col, id)` | `deleteDoc` |
+| `setAnnouncement(text)` | sets `settings/announcement`, or deletes it when the text is empty |
+| `replaceAllContent(v2)` | deletes all content documents, then writes the new ones in batches of 450 |
+| `readLocalContent()`, `clearLocalContent()` | the old `ls-content-v2`/`v1` browser data, kept for one-time migration |
 
 ### 7.3 Seed content — `data/storyFiles/storydata.js`
 Two v1-shape stories:
-- `a1GreetingsStory` (`ein-tag-mit-freunden`): greetings, local cover image `images/hallo.png`.
+- `a1GreetingsStory` (`ein-tag-mit-freunden`): greetings. The cover is `/images/hallo.png` from `public/`. It's kept there because cover URLs are saved in Firestore, and Vite's hashed `src/` asset URLs change with every build.
 - `a2PersoenlicheInformationenStory` (`persoenliche-informationen`): personal info at registration, Unsplash cover. Despite the name, it is placed in **a1**.
 
 ### 7.4 Students — `data/students.js`
-- `students`: built-in list. Currently only `{ code: "OWNER-2026", name: "Teacher", className: "Owner", level: "B2", role: "owner" }`.
-- `getCustomStudents()` / `saveCustomStudents()` read and write `localStorage["ls-students-v1"]`.
-- `getStudents()` returns built-in plus custom students.
+- **Code accounts.**
+  - Code `SARA-4821` ⇄ Auth email `sara-4821@linguaschool.app` with password `SARA-4821` (`codeToEmail`, `CODE_EMAIL_DOMAIN`).
+  - Users only ever type the code.
+- `loadProfile(fbUser)` reads `students/{uid}` and `avatars/{uid}`, and returns the profile with `role`, or `null` if the account isn't a member. On the owner's first login it creates the owner's `students` document.
+- `saveAvatar(uid, dataUrl|null)`: sets or deletes `avatars/{uid}`.
+- `useStudents()`: a live `onSnapshot` list of all students except the owner, sorted by name. Owner only.
+- `createStudent({name, className, level}, code?)`:
+  - Creates the Auth account through a **second Firebase app** (`"student-creator"`, `inMemoryPersistence`), so the owner's own session isn't replaced.
+  - Then writes `students/{uid}`.
+  - Without a `code` it generates `FIRSTNAME-####` and retries if that code is taken. It returns the code.
+- `updateStudent(uid, data)` updates the profile.
+- `deleteStudent(uid)` deletes `students/{uid}` and `avatars/{uid}`. The Auth account stays and can only be removed in the console.
+- `readLocalStudents()`, `clearLocalStudents()`: the old `ls-students-v1` browser data, kept for one-time migration.
 
 ### 7.5 Settings — `data/settings.js`
-- `getAnnouncement()` / `setAnnouncement(text)` use `localStorage["ls-announcement-v1"]`. An empty value removes it. The announcement is shown on Home.
+- Re-exports `getAnnouncement` and `setAnnouncement` from `stories.js`. The announcement lives in `settings/announcement`, is synced with the content, and is shown on Home.
 
 ### 7.6 Auth service — `services/api.js`
-`loginWithCode(raw)` trims and upper-cases the code, waits 500 ms, and finds it in `getStudents()`. It returns `{ student, token: "fake-token" }` or throws an error with `code: "INVALID_CODE"`. **This is the seam where a real backend `fetch` should go.**
+`loginWithCode(raw)`:
+1. Trims and upper-cases the code.
+2. Calls `signInWithEmailAndPassword(codeToEmail(code), code)`.
+3. Maps Firebase errors to `INVALID_CODE`, `TOO_MANY` or `NETWORK`.
+4. Signs out again and throws `INVALID_CODE` if the account has no `students` document (except the owner).
+
+It returns nothing. `AuthContext`'s listener picks up the new session.
 
 ---
 
@@ -229,7 +282,8 @@ Two v1-shape stories:
 
 ### Login (`pages/Login.jsx`)
 - Two columns on desktop: a large colored "A1 A2 B1 B2" panel, and the code form. On mobile it shows the form with level chips.
-- The input upper-cases as you type. On success it calls `login()`, and `<Navigate>` sends the user to `from`.
+- The input upper-cases as you type. It awaits `loginWithCode()`, shows the right error for invalid code, too many tries, or no network, and once `AuthContext` has the user, `<Navigate>` sends them to `from`.
+- Code login only. Google sign-in isn't enabled yet; it may be added later.
 
 ### Layout (`components/layout/Layout.jsx`)
 - Desktop (`lg+`): a fixed 18rem sidebar on the **start** side, with nav links, LangSwitch and ThemeToggle, a user card, and logout.
@@ -258,7 +312,7 @@ Two v1-shape stories:
 - A progress bar fills as questions are answered. The result screen shows an SVG score ring, a message for ≥80%, ≥50%, or lower, and confetti at ≥80%. It offers retry and back to the list.
 
 ### Profile
-- Upload an avatar: it is validated (image type, ≤ 8 MB), center-cropped to a 320×320 canvas, saved as a JPEG data URL with `setAvatar`, and can be removed.
+- Upload an avatar: it is validated (image type, ≤ 8 MB), center-cropped to a 320×320 canvas, and saved as a JPEG data URL to `avatars/{uid}` with `setAvatar`. It can be removed.
 - Shows the student code, level chip, and class. Has a logout button.
 
 ### Dashboard (owner only) — `pages/Dashboard.jsx`
@@ -266,16 +320,24 @@ One large file. The whole page is `dir="ltr" lang="de"`. All labels are bilingua
 
 | Tab | What it does |
 |---|---|
-| **Übersicht** (overview) | Quick-action buttons that switch tabs, a per-level content bar chart, and the announcement editor |
-| **Geschichten** (stories) | Add or edit a story. The story text uses **one sentence per line, `German \|\| Kurdish`**. Lists stories with search, edit, and delete. Changing the level moves the story to another level array. |
+| **Übersicht** (overview) | `SetupBox` (one-time; see below), quick-action buttons that switch tabs, a per-level content bar chart, and the announcement editor |
+| **Geschichten** (stories) | Add or edit a story. The story text uses **one sentence per line, `German \|\| Kurdish`**. Lists stories with search, edit, and delete. Changing the level changes the story's `level` field. |
 | **Wörter** (words) | Generic `TopicTab` with `CFG.words`. Pick an existing topic or "create new" (level, titles, optional story link), then add, edit, or delete words. Topic details (level, titles, `storyId`) can be edited separately. |
 | **Quiz** | The same `TopicTab` with `CFG.quiz`. Answers are entered one per line; the correct answer is a **1-based** number in the form and stored as a 0-based `correctAnswer`. |
-| **Schüler** (students) | Add or edit students (name, class, level). Codes are generated as `FIRSTNAME-####`. Built-in students are read-only. |
-| **Sicherung** (backup) | Export the content as `lingua-content.json`, import JSON (validated through `normalizeContent`, accepts v1 or v2), or reset to the built-in content. |
+| **Schüler** (students) | The live list from `useStudents()`. Adding a student creates a Firebase account plus profile and shows the new `FIRSTNAME-####` code. Edit changes name, class, or level (the code stays the same). Delete revokes access. |
+| **Sicherung** (backup) | Export the content as `lingua-content.json`. Import JSON (validated through `normalizeContent`, accepts v1 or v2, asks for confirmation) or reset to the built-in content. Both import and reset use `replaceAllContent`, so they replace **everything for all students**. |
 
-Write pattern used throughout: `clone(getContent())` → mutate → `saveContent()` → `refresh()`. IDs come from `uid(title)` (a slug plus 4 random chars). Deletes ask for `window.confirm`.
+**SetupBox** appears only when it's needed:
+- If the database has no content, it offers "Eingebauten Inhalt laden" (`replaceAllContent(builtIn())`).
+- If the browser still has pre-Firebase data, it offers to upload `ls-content-*`, and to move `ls-students-v1` students. Moved students are created with their **existing codes**, and codes that are already taken are skipped.
 
-> Note: export and import cover **content only**. Students and the announcement are not included.
+Write pattern used throughout:
+- Build the full document. For topics, `clone(current)`, then change the `words` or `questions` array.
+- `await saveItem(col, doc)` or `removeItem(col, id)`, and show `SAVE_FAIL` if it fails.
+- There is no manual refresh. The `onSnapshot` listener updates the in-memory copy, and `AppRoutes` re-renders.
+- IDs come from `uid(title)` (a slug plus 4 random chars) and are used as Firestore document ids. Deletes ask for `window.confirm`.
+
+> Note: export and import cover **content only**. Students, avatars, and the announcement are not included.
 
 ---
 
@@ -308,26 +370,31 @@ Write pattern used throughout: `clone(getContent())` → mutate → `saveContent
 
 ## 11. Persistence summary
 
-| Storage | Key | Written by |
+| Storage | Key / path | Written by |
 |---|---|---|
+| Firestore | `stories`, `wordTopics`, `quizzes`, `settings/announcement` | Dashboard (owner) via data/stories.js |
+| Firestore | `students/{uid}` | Dashboard (owner) via data/students.js, plus the owner's own profile on first login |
+| Firestore | `avatars/{uid}` | Profile (each user) via AuthContext.setAvatar |
+| Firebase Auth | one Email/Password account per code | Firebase console (owner); `createStudent` (students) |
+| IndexedDB | Firebase Auth session | Firebase SDK |
 | localStorage | `theme` | ThemeContext |
 | localStorage | `lang` | LangContext |
-| localStorage | `auth` | AuthContext.login/logout |
-| localStorage | `avatar:<code>` | AuthContext.setAvatar |
-| localStorage | `ls-content-v2` (reads legacy `ls-content-v1`) | data/stories.js |
-| localStorage | `ls-students-v1` | data/students.js |
-| localStorage | `ls-announcement-v1` | data/settings.js |
 | sessionStorage | `welcomed` | Welcome.jsx (cleared on logout) |
+| localStorage (legacy) | `ls-content-v2`/`v1`, `ls-students-v1` | no longer written. Read once for migration, then cleared. (`auth`, `avatar:*`, `ls-announcement-v1` are no longer used at all.) |
 
-Everything is per browser. Students on other devices **never see** owner edits unless content is exported and imported, or a backend is added.
+Owner edits are shared: every logged-in student sees them live.
 
 ---
 
-## 12. Extension points and future backend
+## 12. Extension points
 
-- **Auth**: replace the body of `services/api.js#loginWithCode` with a `fetch`, and store a real token in `AuthContext`.
-- **Content**: put the getter and setter functions in `data/stories.js` behind an API. Pages already go only through those functions, but they call them synchronously during render, so async loading would need state, Suspense, or a data context.
-- **Students and announcement**: same idea, using `data/students.js` and `data/settings.js`.
+- **Google sign-in (planned, optional)**:
+  1. Enable the Google provider in Firebase Auth.
+  2. For students, link it to an existing code account with `linkWithPopup` on the Profile page, so their `students/{uid}` document keeps working.
+  3. For a teacher Google account, extend `isOwner()` in the rules and `OWNER_UID` in config (for example to a list).
+- **New Firestore collection**: add a `match` block to `firestore.rules` and ask the user to publish it. Without a rule, all access is denied.
+- **New content field**: just add it in the Dashboard form and in `saveItem`. Firestore is schemaless, and `ignoreUndefinedProperties` skips optional fields left empty.
+- **Progress tracking (future)**: for example `progress/{uid}/quizzes/{quizId}`, with a rule letting each user write their own documents.
 - **New level**: add it to `levels.js`, `LEVEL_IDS`/`empty()` in `stories.js`, the i18n `level.<id>` and `level.<id>.desc` keys, and check the Dashboard bar chart.
 - **New UI text**: add a `dict` entry with both `de` and `ku`.
 - **New built-in story**: see CLAUDE.md, "Data layer".
@@ -336,9 +403,11 @@ Everything is per browser. Students on other devices **never see** owner edits u
 
 ## 13. Known issues / quirks
 
-- ESLint reports 7 errors that were already there (empty `catch {}` blocks, `setState` inside an effect in AuthContext, and the fast-refresh rule on context files exporting hooks).
-- The stray `{"put stories here"}` block statement in `data/stories.js` is a placeholder and does nothing.
+- ESLint reports 4 known errors (one empty `catch {}` in LangContext, and the fast-refresh rule on the three context files that export hooks).
+- The production bundle is about 870 kB (about 260 kB gzipped), mostly the Firebase SDK. Vite warns about chunk size.
 - Seed story naming and level mismatch (`a2Persoenliche…` lives in a1).
 - Unused Inter and Roboto fonts in `index.html`. `package.json` is named `"react"`. The README is the Vite template.
-- Untracked empty `env.prod` and an empty `docs/` folder.
-- Login security is placeholder only: codes are visible in the client bundle and in localStorage.
+- Student codes are short (`NAME` + 4 digits). Firebase Auth rate limiting is the only brute-force protection.
+- Deleting a student leaves an orphan Auth account, which has to be removed manually in the console.
+- `replaceAllContent` commits in batches of 450, so a failure partway through can leave content half-replaced. Re-run import or reset to fix it.
+- `firestore.rules` must be published by hand, and the owner uid is duplicated between the rules and `src/config.js`.

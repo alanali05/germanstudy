@@ -38,7 +38,7 @@ export default function Profile() {
       const sx = (img.width - side) / 2;
       const sy = (img.height - side) / 2;
       canvas.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, size, size);
-      setAvatar(canvas.toDataURL("image/jpeg", 0.85));
+      setAvatar(canvas.toDataURL("image/jpeg", 0.85)).catch(() => setError(t("profile.saveFail")));
       URL.revokeObjectURL(img.src);
     };
     img.onerror = () => setError(t("profile.openFail"));
@@ -88,7 +88,7 @@ export default function Profile() {
               {t("profile.change")}
             </button>
             {user.avatar && (
-              <button onClick={() => setAvatar(null)} className="btn-ghost px-5 py-3">
+              <button onClick={() => setAvatar(null).catch(() => setError(t("profile.saveFail")))} className="btn-ghost px-5 py-3">
                 {t("profile.remove")}
               </button>
             )}

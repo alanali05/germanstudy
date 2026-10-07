@@ -65,6 +65,14 @@ export const dict = {
     de: "Dieser Code ist ungültig. Prüfe ihn und versuche es erneut.",
     ku: "ئەڤ کۆدە دروست نینە. بپشکنە و جارەکا دی هەوڵ بدە.",
   },
+  "login.tooMany": {
+    de: "Zu viele Versuche. Warte kurz und versuche es dann erneut.",
+    ku: "گەلەک هەوڵدان. هندەکێ چاڤەڕێ بکە و پاشی جارەکا دی هەوڵ بدە.",
+  },
+  "login.network": {
+    de: "Keine Verbindung. Prüfe dein Internet und versuche es erneut.",
+    ku: "پەیوەندی نینە. ئینتەرنێتا خۆ بپشکنە و جارەکا دی هەوڵ بدە.",
+  },
 
   "home.greeting": { de: "Schön, dich zu sehen, {name}.", ku: "بخێر بێی، {name}." },
   "home.readStories": { de: "{level}-Geschichten lesen", ku: "چیرۆک" },
@@ -131,6 +139,10 @@ export const dict = {
   "profile.tooLarge": {
     de: "Das Bild ist zu groß. Wähle eines unter 8 MB.",
     ku: "وێنە گەلەک مەزنە. یەکێ بچووکتر ژ 8 MB هەلبژێرە.",
+  },
+  "profile.saveFail": {
+    de: "Das Foto konnte nicht gespeichert werden. Prüfe dein Internet.",
+    ku: "وێنە نەهاتە پاراستن. ئینتەرنێتا خۆ بپشکنە.",
   },
   "profile.openFail": {
     de: "Das Bild konnte nicht geöffnet werden. Versuche ein anderes.",

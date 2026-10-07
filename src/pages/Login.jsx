@@ -9,7 +9,7 @@ import LangSwitch from "../components/LangSwitch";
 import ThemeToggle from "../components/ThemeToggle";
 
 export default function Login() {
-  const { user, login } = useAuth();
+  const { user } = useAuth();
   const { t } = useLang();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
@@ -25,10 +25,10 @@ export default function Login() {
     setError("");
     setBusy(true);
     try {
-      const { student, token } = await loginWithCode(code);
-      login(student, token);
+      await loginWithCode(code); // AuthContext sets the user, then <Navigate> above takes over
     } catch (err) {
-      setError(err.code === "INVALID_CODE" ? t("login.invalid") : err.message);
+      const key = { INVALID_CODE: "login.invalid", TOO_MANY: "login.tooMany", NETWORK: "login.network" }[err.code];
+      setError(key ? t(key) : err.message);
       setBusy(false);
     }
   };

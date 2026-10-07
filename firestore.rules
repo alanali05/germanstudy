@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// LinguaSchool security rules.
+// Paste into Firebase console -> Firestore Database -> Rules -> Publish (after every change to this file).
+//   owner   = the teacher's Auth account (must match OWNER_UID in src/config.js)
+//   member  = the owner, or a logged-in account that has a students/{uid} profile
+// Deleting a student's profile therefore removes their access, even though the Auth account still exists.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner() { return signedIn() && request.auth.uid == "QNlSQxU7L6R9TN8hzzAtoFcm4tf1"; }
+    function isMember() {
+      return isOwner() || (signedIn() && exists(/databases/$(database)/documents/students/$(request.auth.uid)));
+    }
+
+    // Learning content + announcement: members read, only the owner writes
+    match /stories/{id}    { allow read: if isMember(); allow write: if isOwner(); }
+    match /wordTopics/{id} { allow read: if isMember(); allow write: if isOwner(); }
+    match /quizzes/{id}    { allow read: if isMember(); allow write: if isOwner(); }
+    match /settings/{id}   { allow read: if isMember(); allow write: if isOwner(); }
+
+    // Profiles: a student reads only their own; only the owner creates, edits and deletes
+    match /students/{uid} {
+      allow read: if isOwner() || (signedIn() && request.auth.uid == uid);
+      allow write: if isOwner();
+    }
+
+    // Profile pictures (small JPEG data URLs): each member manages their own, the owner can manage all
+    match /avatars/{uid} {
+      allow read, delete: if isMember() && (request.auth.uid == uid || isOwner());
+      allow create, update: if isMember() && (request.auth.uid == uid || isOwner())
+        && request.resource.data.keys().hasOnly(["dataUrl"])
+        && request.resource.data.dataUrl is string
+        && request.resource.data.dataUrl.size() < 400000;
+    }
+  }
+}

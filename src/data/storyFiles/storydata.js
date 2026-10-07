@@ -1,11 +1,10 @@
-import hallo from '../../images/hallo.png'
 export const a1GreetingsStory = {
   id: "ein-tag-mit-freunden",
   titleDe: "Ein Tag mit Freunden",
   titleKu: "رۆژەک دگەل هەڤالان",
   level: "A1 (Anfänger)",
   readTime: "3 min",
-  coverImage:hallo,
+  coverImage: "/images/hallo.png",
   segments: [
     { de: "Alan sieht seinen Freund Lukas. Lukas sagt: 'Guten Morgen! Wie geht's?'", ku: "ئالان هەڤالێ خۆ لوکاسی دبینیت. لوکاس دبێژیت: 'سپێدە باش! تو چەوایی؟'" },
     { de: "Alan antwortet: 'Hallo, wie geht es dir?'", ku: "ئالان بەرسڤێ ددەت: 'سڵاو، تو چەوایی؟'" },
