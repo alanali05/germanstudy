@@ -5,12 +5,14 @@ import { getLevel } from "../data/levels";
 import Avatar from "../components/Avatar";
 import Icon from "../components/Icon";
 import PageHeader from "../components/PageHeader";
+import { toJpeg, uploadImage } from "../services/upload";
 
 export default function Profile() {
   const { user, logout, setAvatar } = useAuth();
   const { t } = useLang();
   const fileRef = useRef(null);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const level = getLevel((user.level || "A1").toLowerCase());
 
   const handleFile = (e) => {
@@ -27,22 +29,14 @@ export default function Profile() {
       return;
     }
     setError("");
+    setBusy(true);
 
-    // Crop to a square and shrink, so it stays small
-    const img = new Image();
-    img.onload = () => {
-      const size = 320;
-      const canvas = document.createElement("canvas");
-      canvas.width = canvas.height = size;
-      const side = Math.min(img.width, img.height);
-      const sx = (img.width - side) / 2;
-      const sy = (img.height - side) / 2;
-      canvas.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, size, size);
-      setAvatar(canvas.toDataURL("image/jpeg", 0.85)).catch(() => setError(t("profile.saveFail")));
-      URL.revokeObjectURL(img.src);
-    };
-    img.onerror = () => setError(t("profile.openFail"));
-    img.src = URL.createObjectURL(file);
+    // Crop to a small square JPEG, upload it to R2, then save its link
+    toJpeg(file, { size: 320, square: true })
+      .then((blob) => uploadImage("avatar", blob))
+      .then((url) => setAvatar(url))
+      .catch((err) => setError(t(err.message === "OPEN_FAIL" ? "profile.openFail" : "profile.saveFail")))
+      .finally(() => setBusy(false));
   };
 
   return (
@@ -54,6 +48,7 @@ export default function Profile() {
           <Avatar user={user} size={150} />
           <button
             onClick={() => fileRef.current.click()}
+            disabled={busy}
             aria-label={t("profile.change")}
             className="btn-primary absolute bottom-1 end-1 flex h-11 w-11 items-center justify-center !rounded-full"
           >
@@ -84,7 +79,7 @@ export default function Profile() {
           )}
 
           <div className="mt-6 flex flex-wrap justify-center gap-3 sm:justify-start">
-            <button onClick={() => fileRef.current.click()} className="btn-primary px-5 py-3">
+            <button onClick={() => fileRef.current.click()} disabled={busy} className="btn-primary px-5 py-3">
               {t("profile.change")}
             </button>
             {user.avatar && (

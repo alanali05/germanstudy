@@ -215,7 +215,7 @@ export const a2PersoenlicheInformationenStory = {
     { wordDe: "Der Pass Pässe", sentenceDe: "Ich habe meinen Pass verloren.", wordKu: "پاسپۆرت", sentenceKu: "من پاسپۆرتا خۆ وندا کریە." },
     { wordDe: "Die Papiere", sentenceDe: "Ich habe alle wichtigen Papiere dabei.", wordKu: "بەلگە", sentenceKu: "من هەمی بەلگەیێن گرنگ دگەل خۆ هەینە." },
     { wordDe: "Geboren", sentenceDe: "Ich bin 1990 geboren.", wordKu: "ژدایکبووی", sentenceKu: "ئەز ل سالا 1990 ژدایکبووی مە." },
-    { wordDe: "Heiraten", sentenceDe: "Sie wollen nächsten Monat heiraten. Akkusativ", wordKu: "زەوجین", sentenceKu: "ئەوان دڤێت هەیڤا بهێت بزەوجن. (ئەکوزاتیڤ)" },
+    { wordDe: "Heiraten", sentenceDe: "Sie wollen   nächsten Monat heiraten. Akkusativ", wordKu: "زەوجین", sentenceKu: "ئەوان دڤێت هەیڤا بهێت بزەوجن. (ئەکوزاتیڤ)" },
     { wordDe: "Heißen", sentenceDe: "Ich heiße Anna. Nominativ", wordKu: "ناڤ لێ کرن", sentenceKu: "ناڤێ من ئانا یە. (نۆمیناتیڤ)" },
     { wordDe: "Die Adresse Adressen", sentenceDe: "Meine Adresse ist Hauptstraße 5.", wordKu: "ناڤنیشان", sentenceKu: "ناڤنیشانا من کۆلانا سەرەکی 5ە." },
     { wordDe: "Die Postleitzahl Postleitzahlen", sentenceDe: "Wie ist deine Postleitzahl?", wordKu: "کۆدا پۆستێ", sentenceKu: "کۆدا پۆستا تە چیە؟" },
@@ -251,4 +251,3 @@ export const a2PersoenlicheInformationenStory = {
     { questionDe: "Was bedeutet 'Wohnen' und welcher Fall?", questionKu: "رامانا 'Wohnen' چییە؟", options: ["ژین - Dativ", "زەوجین - Akkusativ", "ناڤ لێ کرن - Nominativ", "ژدایکبوون - Akkusativ"], correctAnswer: 0 }
   ]
 };
-

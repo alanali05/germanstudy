@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import LevelBadge from "../components/LevelBadge";
 import { levels, getLevel } from "../data/levels";
@@ -8,6 +8,7 @@ import {
 } from "../data/stories";
 import { useStudents, createStudent, updateStudent, deleteStudent, readLocalStudents, clearLocalStudents } from "../data/students";
 import { getAnnouncement, setAnnouncement } from "../data/settings";
+import { toJpeg, uploadImage } from "../services/upload";
 
 // Besitzer-Dashboard / داشبۆردا خودانی. Only German + Kurdish (Badini, Arabic script). No English.
 
@@ -24,6 +25,8 @@ const Bi = ({ de, ku }) => (
 const OPT = bi("(optional)", "(ڤەبژارتی)");
 const SAVE_FAIL = { ok: false, text: bi("Speichern fehlgeschlagen. Prüfe die Internetverbindung.", "پاراستن سەرنەکەفت. پەیوەندیا ئینتەرنێتێ بپشکنە.") };
 const WAIT = { ok: true, text: bi("Bitte warten…", "تکایە چاڤەڕێ بکە…") };
+const UPLOAD_FAIL = { ok: false, text: bi("Hochladen fehlgeschlagen. Bitte erneut versuchen.", "بارکرنا وێنەی سەرنەکەفت. دیسا هەول بدە.") };
+const NOT_IMAGE = { ok: false, text: bi("Bitte wähle eine Bilddatei.", "تکایە فایلەکێ وێنە هەلبژێرە.") };
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const uid = (s) => `${s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item"}-${Math.random().toString(36).slice(2, 6)}`;
@@ -264,7 +267,26 @@ function StoriesTab() {
   const [edit, setEdit] = useState(null);
   const [q, setQ] = useState("");
   const [msg, setMsg] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+
+  // Shrinks the chosen picture, uploads it to R2 and puts its link into the cover field
+  const pickCover = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow choosing the same file again
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return setMsg(NOT_IMAGE);
+    setUploading(true); setMsg(WAIT);
+    try {
+      const url = await uploadImage("cover", await toJpeg(file, { size: 1600 }));
+      setF((x) => ({ ...x, coverImage: url }));
+      setMsg(null);
+    } catch {
+      setMsg(UPLOAD_FAIL);
+    }
+    setUploading(false);
+  };
 
   const startEdit = (s) => {
     setEdit({ level: s.level, id: s.id }); setMsg(null);
@@ -305,12 +327,24 @@ function StoriesTab() {
             <Field label={bi("Deutscher Titel", "ناڤونیشانێ ئەلمانی")}><input className="field" value={f.titleDe} onChange={set("titleDe")} lang="de" dir="ltr" /></Field>
             <Field label={bi("Kurdischer Titel", "ناڤونیشانێ کوردی")}><input className="field" value={f.titleKu} onChange={set("titleKu")} lang="ku" dir="rtl" /></Field>
           </Grid>
-          <Field label={bi("Link zum Titelbild", "لینکێ وێنەیێ بەرگی")} hint={OPT}><input className="field" dir="ltr" value={f.coverImage} onChange={set("coverImage")} placeholder="https://..." /></Field>
+          <div>
+            <Field label={bi("Titelbild: Link oder hochladen", "وێنەیێ بەرگی: لینک یان بارکرن")} hint={OPT}>
+              <div className="flex items-start gap-2">
+                <input className="field min-w-0 flex-1" dir="ltr" value={f.coverImage} onChange={set("coverImage")} placeholder="https://..." />
+                <button type="button" onClick={() => fileRef.current.click()} disabled={uploading}
+                  className="btn-ghost mt-1 inline-flex shrink-0 items-center gap-2 px-4" aria-label={bi("Bild hochladen", "وێنەی بار بکە")}>
+                  <Upload size={17} /><span className="hidden md:inline">{bi("Bild hochladen", "وێنەی بار بکە")}</span>
+                </button>
+              </div>
+            </Field>
+            <input ref={fileRef} type="file" accept="image/*" onChange={pickCover} className="hidden" />
+            {f.coverImage && <img src={f.coverImage} alt="" className="mt-2 h-24 rounded-lg border border-line object-cover" />}
+          </div>
           <Field label={bi("Geschichte", "چیرۆک")} hint={bi("ein Satz pro Zeile: Deutsch || Kurdisch", "ئێک رستە د هەر رێزەکێ دا: ئەلمانی || کوردی")}>
             <textarea className="field" rows={8} value={f.text} onChange={set("text")} dir="auto"
               placeholder={"Hallo, wie geht es dir? || سڵاو، تو چەوایی؟\nMir geht es gut. || ئەز باشم."} />
           </Field>
-          <SubmitRow editing={!!edit} label={bi("Geschichte hinzufügen", "چیرۆکێ زێدە بکە")} onCancel={cancel} />
+          <SubmitRow editing={!!edit} label={bi("Geschichte hinzufügen", "چیرۆکێ زێدە بکە")} onCancel={cancel} busy={uploading} />
           <Msg m={msg} />
         </form>
         <p className="mt-4 rounded-xl bg-soft p-3 text-sm text-muted">

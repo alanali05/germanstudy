@@ -11,15 +11,18 @@ Guidance for Claude Code when working in this repository. For the full architect
 - **Quiz** — multiple-choice question sets.
 - **Dashboard** (owner/teacher only) — CRUD for stories, word topics, quizzes, students, a home-page announcement, and JSON import/export.
 
-The backend is **Firebase**, used directly from the browser with no server of our own:
+The backend is **Firebase**, used directly from the browser:
 - **Firebase Auth** (Email/Password) handles login codes.
-- **Cloud Firestore** stores content, students, the announcement, and avatars.
+- **Cloud Firestore** stores content, students, the announcement, and avatar links.
 - `firestore.rules` controls who can read and write what.
+- **Cloudflare R2** stores the image files (profile pictures, story covers). Firestore only keeps their URLs.
+
+The only server code is **one Vercel function, `api/uploads/sign.js`**. It exists only because the R2 keys must stay secret. Everything else talks to Firebase directly, so don't add API routes for normal features. If there are ever more than about 8–10 functions, merge them into one router function (Vercel Hobby limits the number of functions).
 
 ## Commands
 
 ```bash
-npm run dev       # Vite dev server
+npm run dev       # Vite dev server; also serves api/*.js (apiDev plugin in vite.config.js), no `vercel dev` needed
 npm run build     # production build -> dist/
 npm run preview   # serve the build
 npm run lint      # ESLint (flat config)
@@ -28,7 +31,10 @@ npm run lint      # ESLint (flat config)
 - There are no tests and no test runner.
 - `npm run lint` currently reports **4 known errors** (one `no-empty` in LangContext, and `react-refresh/only-export-components` in the three context files). Don't treat them as caused by your change. Fix them only if asked.
 - `npm run build` passes, with a warning about chunks over 500 kB caused by the Firebase SDK.
-- **Firebase config** comes from `.env.local` (git-ignored, `VITE_FIREBASE_*` keys) and from the same variables in Vercel. Never print the values.
+- **Env vars** live in `.env.local` (git-ignored) and the same variables in Vercel. Never print the values.
+  - `VITE_FIREBASE_*` (6): Firebase web config, inlined into the browser build.
+  - `R2_ACCOUNT_ID` (just the 32-character ID, not the endpoint URL), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` (`linguaschool-images`), `R2_PUBLIC_BASE_URL` (the bucket's `https://pub-….r2.dev`, no trailing slash): server-only, used by `api/uploads/sign.js`.
+- **R2 bucket settings** (CORS policy, public r2.dev URL) are set in the Cloudflare dashboard, not in the repo. CORS allows `PUT` with `Content-Type` from `localhost:5173`, `localhost:3000` and the production domain.
 - **`firestore.rules` is not deployed automatically.** There's no Firebase CLI setup. After you edit the file, tell the user to paste it into Firebase console → Firestore Database → Rules → Publish.
 - Platform is Windows. The Bash tool runs Git Bash and PowerShell is also available.
 
@@ -36,10 +42,11 @@ npm run lint      # ESLint (flat config)
 
 - React 19, react-router-dom v6 (`BrowserRouter`), Vite 8, plain **JavaScript/JSX (no TypeScript)**.
 - Firebase JS SDK v12 (modular imports: `firebase/app`, `firebase/auth`, `firebase/firestore`). It's set up in `src/lib/firebase.js`, which exports `app`, `auth`, `db`, and `firebaseConfig`. Firestore is created with `ignoreUndefinedProperties: true`.
-- Spark (free) plan: no Cloud Functions and no Firebase Storage.
+- Spark (free) plan: no Cloud Functions and no Firebase Storage (images go to R2 instead).
+- `api/uploads/sign.js` uses `jose` (verifies the Firebase ID token against Google's public keys, so no Firebase admin key is needed) and `aws4fetch` (signs the R2 URL).
 - Tailwind CSS v4 through `@tailwindcss/vite`. There is no `tailwind.config`; theme tokens live in `src/index.css` (`@theme inline`).
 - `lucide-react` for some icons (ThemeToggle, Dashboard). Most icons use the custom `src/components/Icon.jsx` (an inline SVG map).
-- Deployed on Vercel. `vercel.json` rewrites every path to `/index.html` so the SPA routes work.
+- Deployed on Vercel. `vercel.json` rewrites every path except `/api/*` to `/index.html` so the SPA routes work.
 
 ## Key conventions
 
@@ -79,7 +86,7 @@ npm run lint      # ESLint (flat config)
 | `quizzes/{id}` | `{ level, order, titleDe, titleKu, storyId?, questions[{questionDe,questionKu,options[],correctAnswer}] }` | members | owner |
 | `settings/announcement` | `{ text }` | members | owner |
 | `students/{uid}` | `{ code, name, className, level: "A1" }` | owner, or the student themself | owner |
-| `avatars/{uid}` | `{ dataUrl }` (320px JPEG, < 400 kB) | the user themself or owner | the user themself or owner |
+| `avatars/{uid}` | `{ url }` (link to `avatars/{uid}.jpg` in R2, with `?v=` for cache busting) | the user themself or owner | the user themself or owner |
 
 A **member** is the owner, or an account that has a `students/{uid}` document. Deleting that document cuts off the student's access.
 
@@ -101,6 +108,8 @@ A **member** is the owner, or an account that has a `students/{uid}` document. D
 - `builtIn()` converts the stories in `src/data/storyFiles/storydata.js` from the v1 shape using `fromStoryMap`. It is **only a seed**. Editing `storydata.js` changes nothing live until the owner clicks Dashboard → Übersicht "Eingebauten Inhalt laden" (shown when the database is empty) or Sicherung → "Auf Standard zurücksetzen". Both replace **all** content.
 - To add a built-in story: export it from `storydata.js` in the v1 shape (`id, titleDe, titleKu, readTime, coverImage, segments, vocabulary, quiz`), import it in `stories.js`, and add it to the right level array in `builtIn()`.
 - `coverImage` URLs are saved to Firestore, so local images must live in `public/` (for example `/images/hallo.png`). Don't import them from `src/`; Vite's hashed URLs would break after the next build.
+- **Image uploads** (`src/services/upload.js`): `toJpeg(file, { size, square })` shrinks in the browser, then `uploadImage(kind, blob)` asks `/api/uploads/sign` for a presigned URL and PUTs the JPEG straight to R2. `kind` is `"avatar"` (any member, fixed key `avatars/{uid}.jpg`, ≤ 1 MB) or `"cover"` (owner only, `covers/<random>.jpg`, ≤ 3 MB). The signature includes `Content-Type: image/jpeg`, so nothing else can be uploaded with it.
+- Replaced or deleted covers stay in R2. Nothing cleans them up yet.
 - `storyId` links a word topic or quiz to a story. Linked words become tappable in `StoryReader`, and linked topics and quizzes appear as buttons under the story.
 - `readLocalContent()` / `clearLocalContent()` read and clear the old `ls-content-v2`/`v1` browser data. The Dashboard's one-time "Einrichtung" box offers to upload it.
 

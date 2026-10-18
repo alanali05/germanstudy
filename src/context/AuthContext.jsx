@@ -36,10 +36,10 @@ export function AuthProvider({ children }) {
     return signOut(auth);
   };
 
-  // dataUrl = new picture, or null to remove it
-  const setAvatar = (dataUrl) => {
-    setUser((u) => ({ ...u, avatar: dataUrl }));
-    return saveAvatar(user.uid, dataUrl);
+  // url = new picture (already uploaded to R2), or null to remove it
+  const setAvatar = (url) => {
+    setUser((u) => ({ ...u, avatar: url }));
+    return saveAvatar(user.uid, url);
   };
 
   return (

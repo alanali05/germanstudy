@@ -25,13 +25,15 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
-    // Profile pictures (small JPEG data URLs): each member manages their own, the owner can manage all
+    // Profile pictures: { url } of the JPEG in Cloudflare R2 (uploaded via /api/uploads/sign).
+    // Each member manages their own, the owner can manage all.
     match /avatars/{uid} {
       allow read, delete: if isMember() && (request.auth.uid == uid || isOwner());
       allow create, update: if isMember() && (request.auth.uid == uid || isOwner())
-        && request.resource.data.keys().hasOnly(["dataUrl"])
-        && request.resource.data.dataUrl is string
-        && request.resource.data.dataUrl.size() < 400000;
+        && request.resource.data.keys().hasOnly(["url"])
+        && request.resource.data.url is string
+        && request.resource.data.url.size() < 500
+        && request.resource.data.url.matches("https://.+");
     }
   }
 }

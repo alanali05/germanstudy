@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.2",
+    "aws4fetch": "^1.0.20",
     "firebase": "^12.19.0",
+    "jose": "^6.2.12",
     "lucide-react": "^1.23.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

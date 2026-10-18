@@ -1,10 +1,10 @@
 # CODEBASE.md — LinguaSchool architecture
 
-LinguaSchool is a React single-page app for learning German, built for speakers of Kurdish (Badini, Arabic script). There is no server of our own. The browser talks directly to **Firebase**:
+LinguaSchool is a React single-page app for learning German, built for speakers of Kurdish (Badini, Arabic script). The browser talks directly to **Firebase**:
 - **Auth** (Email/Password) for login codes.
-- **Cloud Firestore** for content, students, the announcement, and avatars.
+- **Cloud Firestore** for content, students, the announcement, and avatar links.
 
-Access is enforced by `firestore.rules`.
+Access is enforced by `firestore.rules`. Image files live in **Cloudflare R2**. The only server code is one Vercel function, `api/uploads/sign.js`, which hands out short-lived upload URLs so the R2 keys never reach the browser.
 
 ---
 
@@ -24,11 +24,18 @@ Access is enforced by `firestore.rules`.
                  │                            ▲ onSnapshot           │ saveItem etc.  │
                  │ Dashboard ──writes─────────┼──────────────────────┘ (owner only)   │
                  │ Login ─▶ services/api.js ─▶ signInWithEmailAndPassword             │
-                 └────────────────────────────┼───────────────────────────────────────┘
-                                              ▼
-              Firebase:  Auth (code accounts)   Firestore: stories, wordTopics, quizzes,
-                                                settings, students, avatars  (+ firestore.rules)
- Hosting: Vercel static build (dist/), every path rewritten to /index.html
+                 │ Profile/Dashboard ─▶ services/upload.js (toJpeg → uploadImage)     │
+                 └──────────────┬─────────────┼────────────────────────┬──────────────┘
+                                │             ▼                        │ 1. POST + ID token
+                                │  Firebase:  Auth (code accounts)     ▼
+                                │  Firestore: stories, wordTopics,   Vercel fn api/uploads/sign.js
+                                │  quizzes, settings, students,      (verifies token, checks member,
+                                │  avatars (+ firestore.rules)        returns presigned PUT URL)
+                                │ 2. PUT JPEG
+                                ▼
+              Cloudflare R2 bucket linguaschool-images: avatars/{uid}.jpg, covers/*.jpg
+              (served publicly from R2_PUBLIC_BASE_URL)
+ Hosting: Vercel static build (dist/) + api/ functions; every non-/api path rewritten to /index.html
 ```
 
 ---
@@ -43,9 +50,10 @@ Access is enforced by `firestore.rules`.
 | Styling | Tailwind CSS v4 plus custom CSS classes and CSS variables in `src/index.css` |
 | Icons | Custom `Icon.jsx` SVG set, and `lucide-react` (ThemeToggle, Dashboard) |
 | Backend | Firebase JS SDK v12: Auth (Email/Password) and Cloud Firestore (`europe-west3`), Spark (free) plan |
+| Images | Cloudflare R2 (`linguaschool-images`, Western Europe), public r2.dev URL; uploads signed by one Vercel function (`jose`, `aws4fetch`) |
 | Speech | Web Speech API (`speechSynthesis`, `de-DE`) |
 | Lint | ESLint 10 flat config: `js.recommended`, `react-hooks`, `react-refresh/vite` |
-| Deploy | Vercel (`vercel.json` SPA rewrite) |
+| Deploy | Vercel (`vercel.json` SPA rewrite, `api/` functions) |
 | Tests | none |
 
 ---
@@ -55,11 +63,12 @@ Access is enforced by `firestore.rules`.
 ```
 germanstudy/
 ├── index.html                 # entry HTML; theme bootstrap script; title "LinguaSchool"
-├── vite.config.js             # plugins: tailwindcss(), react()
-├── eslint.config.js
-├── vercel.json                # rewrites /(.*) → /index.html
+├── vite.config.js             # plugins: tailwindcss(), react(), apiDev() (serves api/ in npm run dev)
+├── eslint.config.js           # browser globals; Node globals for api/ and vite.config.js
+├── vercel.json                # rewrites every non-/api path → /index.html
 ├── firestore.rules            # Firestore security rules (paste into the console to deploy)
-├── .env.local                 # VITE_FIREBASE_* config (git-ignored)
+├── .env.local                 # VITE_FIREBASE_* + R2_* (git-ignored)
+├── api/uploads/sign.js        # the only Vercel function: presigned R2 upload URLs
 ├── docs/                      # CLAUDE.md, CODEBASE.md
 ├── public/                    # favicon.svg, icons.svg, images/hallo.png (seed story cover)
 └── src/
@@ -77,6 +86,7 @@ germanstudy/
     │   ├── AppRoutes.jsx      # route table + OwnerOnly guard; subscribes to content
     │   └── ProtectedRoute.jsx # redirect to /login; starts content sync; waits for it
     ├── services/api.js        # loginWithCode() → Firebase Auth
+    ├── services/upload.js     # toJpeg() (shrink in browser), uploadImage() (sign → PUT to R2)
     ├── utils/speak.js         # speak(text, onEnd), stopSpeaking()
     ├── data/
     │   ├── levels.js          # A1..B2 metadata + getLevel()
@@ -161,7 +171,7 @@ All three learning sections follow the same **three-step drill-down: Levels → 
 - `tn(key, n)`: uses `key.one` when `n === 1` and that key exists, and passes `{ n }`.
 
 ### AuthContext (`useAuth`)
-- `{ user, loading, logout(), setAvatar(dataUrl|null) }`.
+- `{ user, loading, logout(), setAvatar(url|null) }`.
 - `user` = `{ uid, code, name, className, level: "A1"…, role: "owner"|"student", avatar }`.
   - It's built by `loadProfile(fbUser)` in `data/students.js`.
   - `role` is computed by comparing `uid` to `OWNER_UID`; it is not stored.
@@ -184,7 +194,7 @@ Pages import plain **synchronous** getter functions from `src/data/*` and call t
 | `quizzes/{id}` | `level`, `order`, `titleDe`, `titleKu`, `storyId?`, `questions[{questionDe,questionKu,options[],correctAnswer}]` | member | owner |
 | `settings/announcement` | `text` | member | owner |
 | `students/{uid}` | `code`, `name`, `className`, `level` ("A1"…) | owner, or the student themself | owner |
-| `avatars/{uid}` | `dataUrl` (string < 400 kB) | the user themself or owner (if member) | the user themself or owner (if member) |
+| `avatars/{uid}` | `url` (https string < 500 chars, points to R2) | the user themself or owner (if member) | the user themself or owner (if member) |
 
 - **owner** = `request.auth.uid == OWNER_UID`. The uid is hard-coded in `firestore.rules` and must match `src/config.js`.
 - **member** = the owner, or a signed-in user whose `students/{uid}` document exists. Deleting that document revokes access.
@@ -254,7 +264,7 @@ Two v1-shape stories:
   - Code `SARA-4821` ⇄ Auth email `sara-4821@linguaschool.app` with password `SARA-4821` (`codeToEmail`, `CODE_EMAIL_DOMAIN`).
   - Users only ever type the code.
 - `loadProfile(fbUser)` reads `students/{uid}` and `avatars/{uid}`, and returns the profile with `role`, or `null` if the account isn't a member. On the owner's first login it creates the owner's `students` document.
-- `saveAvatar(uid, dataUrl|null)`: sets or deletes `avatars/{uid}`.
+- `saveAvatar(uid, url|null)`: sets `avatars/{uid}` to `{ url }` or deletes it.
 - `useStudents()`: a live `onSnapshot` list of all students except the owner, sorted by name. Owner only.
 - `createStudent({name, className, level}, code?)`:
   - Creates the Auth account through a **second Firebase app** (`"student-creator"`, `inMemoryPersistence`), so the owner's own session isn't replaced.
@@ -275,6 +285,16 @@ Two v1-shape stories:
 4. Signs out again and throws `INVALID_CODE` if the account has no `students` document (except the owner).
 
 It returns nothing. `AuthContext`'s listener picks up the new session.
+
+### 7.7 Image uploads — `services/upload.js` + `api/uploads/sign.js`
+- `toJpeg(file, { size, square })`: draws the picture on a canvas (white background) and returns a JPEG Blob (quality 0.85). `square` crops the middle to size×size; otherwise the longer side is scaled down to `size`. Rejects with `OPEN_FAIL`.
+- `uploadImage(kind, blob)`: POSTs `{ kind, size }` with the Firebase ID token to `/api/uploads/sign`, PUTs the blob to the returned `uploadUrl`, and returns `publicUrl`. Throws `UPLOAD_FAIL`.
+- `api/uploads/sign.js` (Vercel function, Node):
+  1. Verifies the ID token with `jose` against Google's public keys (issuer/audience = the Firebase project).
+  2. Checks membership like the rules do: owner uid, or `students/{uid}` readable through the Firestore REST API with the user's own token.
+  3. `avatar`: any member, key `avatars/{uid}.jpg`, ≤ 1 MB. `cover`: owner only, key `covers/<random>.jpg`, ≤ 3 MB.
+  4. Signs a PUT URL with `aws4fetch` (valid 120 s, `Content-Type: image/jpeg` signed) and returns it with `publicUrl` = `R2_PUBLIC_BASE_URL/key?v=<timestamp>`.
+- In `npm run dev`, the `apiDev` plugin in `vite.config.js` loads all `.env.local` vars into `process.env` and serves `/api/<path>` from `api/<path>.js` with a tiny `res.status().json()` shim.
 
 ---
 
@@ -312,7 +332,7 @@ It returns nothing. `AuthContext`'s listener picks up the new session.
 - A progress bar fills as questions are answered. The result screen shows an SVG score ring, a message for ≥80%, ≥50%, or lower, and confetti at ≥80%. It offers retry and back to the list.
 
 ### Profile
-- Upload an avatar: it is validated (image type, ≤ 8 MB), center-cropped to a 320×320 canvas, and saved as a JPEG data URL to `avatars/{uid}` with `setAvatar`. It can be removed.
+- Upload an avatar: it is validated (image type, ≤ 8 MB), center-cropped to a 320×320 JPEG (`toJpeg`), uploaded to R2 as `avatars/{uid}.jpg` (`uploadImage`), and its link is saved to `avatars/{uid}` with `setAvatar`. Removing it deletes only the Firestore link; the file is overwritten by the next upload.
 - Shows the student code, level chip, and class. Has a logout button.
 
 ### Dashboard (owner only) — `pages/Dashboard.jsx`
@@ -321,7 +341,7 @@ One large file. The whole page is `dir="ltr" lang="de"`. All labels are bilingua
 | Tab | What it does |
 |---|---|
 | **Übersicht** (overview) | `SetupBox` (one-time; see below), quick-action buttons that switch tabs, a per-level content bar chart, and the announcement editor |
-| **Geschichten** (stories) | Add or edit a story. The story text uses **one sentence per line, `German \|\| Kurdish`**. Lists stories with search, edit, and delete. Changing the level changes the story's `level` field. |
+| **Geschichten** (stories) | Add or edit a story. The story text uses **one sentence per line, `German \|\| Kurdish`**. Lists stories with search, edit, and delete. Changing the level changes the story's `level` field. The cover is either a pasted link or an **uploaded picture** (shrunk to ≤ 1600 px JPEG, uploaded to R2 `covers/`, link filled in, small preview shown). |
 | **Wörter** (words) | Generic `TopicTab` with `CFG.words`. Pick an existing topic or "create new" (level, titles, optional story link), then add, edit, or delete words. Topic details (level, titles, `storyId`) can be edited separately. |
 | **Quiz** | The same `TopicTab` with `CFG.quiz`. Answers are entered one per line; the correct answer is a **1-based** number in the form and stored as a 0-based `correctAnswer`. |
 | **Schüler** (students) | The live list from `useStudents()`. Adding a student creates a Firebase account plus profile and shows the new `FIRSTNAME-####` code. Edit changes name, class, or level (the code stays the same). Delete revokes access. |
@@ -374,7 +394,8 @@ Write pattern used throughout:
 |---|---|---|
 | Firestore | `stories`, `wordTopics`, `quizzes`, `settings/announcement` | Dashboard (owner) via data/stories.js |
 | Firestore | `students/{uid}` | Dashboard (owner) via data/students.js, plus the owner's own profile on first login |
-| Firestore | `avatars/{uid}` | Profile (each user) via AuthContext.setAvatar |
+| Firestore | `avatars/{uid}` (link) | Profile (each user) via AuthContext.setAvatar |
+| Cloudflare R2 | `avatars/{uid}.jpg`, `covers/<random>.jpg` | services/upload.js through presigned URLs from api/uploads/sign.js |
 | Firebase Auth | one Email/Password account per code | Firebase console (owner); `createStudent` (students) |
 | IndexedDB | Firebase Auth session | Firebase SDK |
 | localStorage | `theme` | ThemeContext |
@@ -410,4 +431,6 @@ Owner edits are shared: every logged-in student sees them live.
 - Student codes are short (`NAME` + 4 digits). Firebase Auth rate limiting is the only brute-force protection.
 - Deleting a student leaves an orphan Auth account, which has to be removed manually in the console.
 - `replaceAllContent` commits in batches of 450, so a failure partway through can leave content half-replaced. Re-run import or reset to fix it.
+- Replaced or deleted story covers stay in R2 (no cleanup yet). Deleting a student leaves their avatar file in R2.
+- The r2.dev public URL is rate-limited by Cloudflare. Connect a custom domain to the bucket before traffic grows, then update `R2_PUBLIC_BASE_URL` (existing links keep the old domain).
 - `firestore.rules` must be published by hand, and the owner uid is duplicated between the rules and `src/config.js`.

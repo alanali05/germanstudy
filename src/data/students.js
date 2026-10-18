@@ -28,12 +28,13 @@ export async function loadProfile(fbUser) {
     await setDoc(doc(db, "students", uid), data);
   }
   const avatar = await getDoc(doc(db, "avatars", uid));
-  return { ...data, uid, role: isOwner(uid) ? "owner" : "student", avatar: avatar.data()?.dataUrl || null };
+  return { ...data, uid, role: isOwner(uid) ? "owner" : "student", avatar: avatar.data()?.url || null };
 }
 
-export function saveAvatar(uid, dataUrl) {
+// avatars/{uid} = { url } of the picture in R2 (uploaded by services/upload.js); null removes it
+export function saveAvatar(uid, url) {
   const ref = doc(db, "avatars", uid);
-  return dataUrl ? setDoc(ref, { dataUrl }) : deleteDoc(ref);
+  return url ? setDoc(ref, { url }) : deleteDoc(ref);
 }
 
 /* ---------- owner only ---------- */
