@@ -55,7 +55,11 @@ npm run lint      # ESLint (flat config)
   - `t(key, vars)` interpolates `{name}`-style placeholders and falls back to `de`, then to the key.
   - `tn(key, n)` picks the `key.one` entry when `n === 1`.
 - **When adding UI text, add both `de` and `ku` to `dict`.** The Kurdish text should be checked by a native speaker; the file comment says so.
-- **Exception:** `src/pages/Dashboard.jsx` does not use `dict`. It hard-codes both languages side by side with `bi(de, ku)` (an inline string with Unicode bidi isolates) and `<Bi de ku />` (stacked block). Keep that pattern there. The Dashboard has **no English** by design.
+- **Exception:** `src/pages/Dashboard.jsx` does not use `dict`. It writes both languages inline and shows **only the current app language** (the DE/KU switch):
+  - Every component calls `const bi = useBi();` and uses `bi("German", "Kurdish")`. `<Bi de={…} ku={…} />` does the same for JSX.
+  - Texts defined outside components (`OPT`, `tabs`, `CFG` texts, `toItem` errors) are `[de, ku]` pairs shown with `bi(...pair)`. Fixed messages are `{ ok, de, ku }` objects that `<Msg>` translates.
+  - The page follows the app's `dir` (RTL in Kurdish). Inputs for German/Kurdish content keep their own `lang`/`dir`.
+  - The Dashboard has **no English** by design.
 - Default language is `ku`. `LangContext` sets `<html lang dir>`, and `ku` makes the page **RTL**.
 - Content fields come in pairs: `titleDe`/`titleKu`, `wordDe`/`wordKu`, `sentenceDe`/`sentenceKu`, `questionDe`/`questionKu`, segment `{ de, ku }`.
 
@@ -105,9 +109,12 @@ A **member** is the owner, or an account that has a `students/{uid}` document. D
   - `replaceAllContent(v2)` deletes every document in the three collections, then writes new ones in batches of 450. Import, reset and migration use it.
 - To edit topic items, clone the topic, change its `words` or `questions` array, then `saveItem` the whole topic.
 - The **level is the `level` field** (lowercase id). The old display-only `level` text from the seed data is overwritten when content is written.
-- `builtIn()` converts the stories in `src/data/storyFiles/storydata.js` from the v1 shape using `fromStoryMap`. It is **only a seed**. Editing `storydata.js` changes nothing live until the owner clicks Dashboard → Übersicht "Eingebauten Inhalt laden" (shown when the database is empty) or Sicherung → "Auf Standard zurücksetzen". Both replace **all** content.
-- To add a built-in story: export it from `storydata.js` in the v1 shape (`id, titleDe, titleKu, readTime, coverImage, segments, vocabulary, quiz`), import it in `stories.js`, and add it to the right level array in `builtIn()`.
-- `coverImage` URLs are saved to Firestore, so local images must live in `public/` (for example `/images/hallo.png`). Don't import them from `src/`; Vite's hashed URLs would break after the next build.
+- `builtIn()` converts the stories in `src/data/storyFiles/` (`storydata.js`: 2 stories, `moreSroryData.js`: 5 stories, all A1) from the v1 shape using `fromStoryMap`. It is **only a seed**. Editing these files changes nothing live until the owner uses one of the Dashboard buttons:
+  - Übersicht "Eingebauten Inhalt laden" (shown when the database is empty) and Sicherung → "Auf Standard zurücksetzen" replace **all** content.
+  - Sicherung → "Neue eingebaute Inhalte hinzufügen" (`addMissingBuiltIn()`) only writes built-in stories/topics/quizzes whose id isn't in Firestore yet. It deletes and overwrites nothing, so it's the safe way to publish new built-in stories. Edits to an already-added built-in story are **not** picked up by it.
+- To add a built-in story: export it from a file in `storyFiles/` in the v1 shape (`id, titleDe, titleKu, readTime, coverImage, segments, vocabulary, quiz`), import it in `stories.js`, and add it to the right level array in `builtIn()`. The `level` field inside the story object is ignored; the array it sits in decides the level. Its word topic and quiz get the story's `id` as their document id.
+- **New or edited stories need a cover, and it can only be uploaded** (Dashboard → Geschichten → "Bild hochladen"), so it goes to R2. There is no link field. Older stories keep their existing link (Unsplash, `/images/hallo.png`) until a new picture is uploaded.
+- Built-in `coverImage` URLs are saved to Firestore as they are, so local images must live in `public/` (for example `/images/hallo.png`). Don't import them from `src/`; Vite's hashed URLs would break after the next build.
 - **Image uploads** (`src/services/upload.js`): `toJpeg(file, { size, square })` shrinks in the browser, then `uploadImage(kind, blob)` asks `/api/uploads/sign` for a presigned URL and PUTs the JPEG straight to R2. `kind` is `"avatar"` (any member, fixed key `avatars/{uid}.jpg`, ≤ 1 MB) or `"cover"` (owner only, `covers/<random>.jpg`, ≤ 3 MB). The signature includes `Content-Type: image/jpeg`, so nothing else can be uploaded with it.
 - Replaced or deleted covers stay in R2. Nothing cleans them up yet.
 - `storyId` links a word topic or quiz to a story. Linked words become tappable in `StoryReader`, and linked topics and quizzes appear as buttons under the story.

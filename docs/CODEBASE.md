@@ -232,7 +232,7 @@ startContentSync()            (called by ProtectedRoute when user.uid is set; re
     → notify useContent() subscribers (AppRoutes re-renders everything)
 stop() (logout) → listeners closed, state reset to empty / not ready
 ```
-`builtIn()` is now **only a seed**. It never loads automatically. The owner applies it from the Dashboard ("Eingebauten Inhalt laden" when the database is empty, or "Auf Standard zurücksetzen").
+`builtIn()` is now **only a seed**. It never loads automatically. The owner applies it from the Dashboard ("Eingebauten Inhalt laden" when the database is empty, or "Auf Standard zurücksetzen"), both of which replace everything, or with "Neue eingebaute Inhalte hinzufügen" (`addMissingBuiltIn()`), which only adds built-in items whose id is missing from Firestore. Built-in stories: 2 in `storydata.js`, 5 in `moreSroryData.js`, all in A1.
 
 **API:**
 | Function | Purpose |
@@ -336,16 +336,16 @@ It returns nothing. `AuthContext`'s listener picks up the new session.
 - Shows the student code, level chip, and class. Has a logout button.
 
 ### Dashboard (owner only) — `pages/Dashboard.jsx`
-One large file. The whole page is `dir="ltr" lang="de"`. All labels are bilingual inline through `bi()` and `<Bi>`. Stat tiles at the top show counts of stories, words, questions, and students. Tabs:
+One large file. All labels are written in German and Kurdish inline, but only the current app language is shown (`useBi()` → `bi(de, ku)`, `<Bi>`), and the page follows the app direction (RTL for Kurdish). Stat tiles at the top show counts of stories, words, questions, and students. Tabs:
 
 | Tab | What it does |
 |---|---|
 | **Übersicht** (overview) | `SetupBox` (one-time; see below), quick-action buttons that switch tabs, a per-level content bar chart, and the announcement editor |
-| **Geschichten** (stories) | Add or edit a story. The story text uses **one sentence per line, `German \|\| Kurdish`**. Lists stories with search, edit, and delete. Changing the level changes the story's `level` field. The cover is either a pasted link or an **uploaded picture** (shrunk to ≤ 1600 px JPEG, uploaded to R2 `covers/`, link filled in, small preview shown). |
+| **Geschichten** (stories) | Add or edit a story. The story text uses **one sentence per line, `German \|\| Kurdish`**. Lists stories with search, edit, and delete. Changing the level changes the story's `level` field. A cover is **required** and can only be **uploaded** (shrunk to ≤ 1600 px JPEG, uploaded to R2 `covers/`, preview shown). There is no link field; older stories keep their existing link until a new picture is uploaded. |
 | **Wörter** (words) | Generic `TopicTab` with `CFG.words`. Pick an existing topic or "create new" (level, titles, optional story link), then add, edit, or delete words. Topic details (level, titles, `storyId`) can be edited separately. |
 | **Quiz** | The same `TopicTab` with `CFG.quiz`. Answers are entered one per line; the correct answer is a **1-based** number in the form and stored as a 0-based `correctAnswer`. |
 | **Schüler** (students) | The live list from `useStudents()`. Adding a student creates a Firebase account plus profile and shows the new `FIRSTNAME-####` code. Edit changes name, class, or level (the code stays the same). Delete revokes access. |
-| **Sicherung** (backup) | Export the content as `lingua-content.json`. Import JSON (validated through `normalizeContent`, accepts v1 or v2, asks for confirmation) or reset to the built-in content. Both import and reset use `replaceAllContent`, so they replace **everything for all students**. |
+| **Sicherung** (backup) | Export the content as `lingua-content.json`. Import JSON (validated through `normalizeContent`, accepts v1 or v2, asks for confirmation) or reset to the built-in content. Both import and reset use `replaceAllContent`, so they replace **everything for all students**. "Neue eingebaute Inhalte hinzufügen" adds only missing built-in stories/topics/quizzes and shows how many were added. |
 
 **SetupBox** appears only when it's needed:
 - If the database has no content, it offers "Eingebauten Inhalt laden" (`replaceAllContent(builtIn())`).

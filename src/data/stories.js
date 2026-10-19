@@ -9,6 +9,9 @@ import { useSyncExternalStore } from "react";
 import { collection, deleteDoc, doc, getDocs, onSnapshot, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { a1GreetingsStory, a2PersoenlicheInformationenStory } from "./storyFiles/storydata";
+import {
+  a1EinkaufenStory, a1FamilieUndWohnenStory, a1ImRestaurantStory, a1FreizeitUndHobbysStory, a1BeimArztStory,
+} from "./storyFiles/moreSroryData";
 
 const COLS = ["stories", "wordTopics", "quizzes"];
 const LEGACY_KEYS = ["ls-content-v2", "ls-content-v1"]; // content saved in the browser before Firebase
@@ -40,9 +43,13 @@ export function normalizeContent(d) {
   throw new Error("bad data");
 }
 
-// Built-in stories: put new ones here (v1 shape, see storyFiles/storydata.js)
+// Built-in stories: put new ones here (v1 shape, see storyFiles/*.js), then use
+// Dashboard -> Backup -> "add missing built-in content" to write them to Firestore
 export const builtIn = () => fromStoryMap({
-  a1: [a1GreetingsStory, a2PersoenlicheInformationenStory],
+  a1: [
+    a1GreetingsStory, a2PersoenlicheInformationenStory,
+    a1EinkaufenStory, a1FamilieUndWohnenStory, a1ImRestaurantStory, a1FreizeitUndHobbysStory, a1BeimArztStory,
+  ],
   a2: [],
   b1: [],
   b2: [],
@@ -155,6 +162,26 @@ export async function replaceAllContent(c) {
     ops.slice(i, i + 450).forEach((op) => op(batch));
     await batch.commit();
   }
+}
+
+// Writes only the built-in stories/topics/quizzes whose id is not in Firestore yet (nothing is deleted
+// or overwritten), after the existing ones. Returns how many documents were added.
+export async function addMissingBuiltIn() {
+  const c = builtIn();
+  const batch = writeBatch(db);
+  let added = 0;
+  for (const col of COLS) {
+    const have = new Set((await getDocs(collection(db, col))).docs.map((d) => d.id));
+    LEVEL_IDS.forEach((level) =>
+      c[col][level].forEach(({ id, ...item }) => {
+        if (have.has(id)) return;
+        batch.set(doc(db, col, id), { ...item, level, order: Date.now() + added });
+        added++;
+      })
+    );
+  }
+  if (added) await batch.commit();
+  return added;
 }
 
 /* ---------- content saved in this browser before Firebase ---------- */

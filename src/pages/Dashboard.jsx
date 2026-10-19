@@ -4,29 +4,30 @@ import PageHeader from "../components/PageHeader";
 import LevelBadge from "../components/LevelBadge";
 import { levels, getLevel } from "../data/levels";
 import {
-  getContent, normalizeContent, builtIn, saveItem, removeItem, findStory, replaceAllContent, readLocalContent, clearLocalContent,
+  getContent, normalizeContent, builtIn, saveItem, removeItem, findStory, replaceAllContent, addMissingBuiltIn, readLocalContent, clearLocalContent,
 } from "../data/stories";
 import { useStudents, createStudent, updateStudent, deleteStudent, readLocalStudents, clearLocalStudents } from "../data/students";
 import { getAnnouncement, setAnnouncement } from "../data/settings";
 import { toJpeg, uploadImage } from "../services/upload";
+import { useLang } from "../context/LangContext";
 
 // Besitzer-Dashboard / داشبۆردا خودانی. Only German + Kurdish (Badini, Arabic script). No English.
 
-/* bi = one string with German and Kurdish together.
-   The invisible marks keep each language in the right direction. */
-const bi = (de, ku) => `\u2066${de}\u2069 · \u2067${ku}\u2069`;
-/* Bi = for long texts: German line, then Kurdish line */
-const Bi = ({ de, ku }) => (
-  <>
-    <span className="block" lang="de" dir="ltr">{de}</span>
-    <span className="mt-1 block" lang="ku" dir="rtl">{ku}</span>
-  </>
-);
-const OPT = bi("(optional)", "(ڤەبژارتی)");
-const SAVE_FAIL = { ok: false, text: bi("Speichern fehlgeschlagen. Prüfe die Internetverbindung.", "پاراستن سەرنەکەفت. پەیوەندیا ئینتەرنێتێ بپشکنە.") };
-const WAIT = { ok: true, text: bi("Bitte warten…", "تکایە چاڤەڕێ بکە…") };
-const UPLOAD_FAIL = { ok: false, text: bi("Hochladen fehlgeschlagen. Bitte erneut versuchen.", "بارکرنا وێنەی سەرنەکەفت. دیسا هەول بدە.") };
-const NOT_IMAGE = { ok: false, text: bi("Bitte wähle eine Bilddatei.", "تکایە فایلەکێ وێنە هەلبژێرە.") };
+/* bi(de, ku) = the text in the app language (the DE/KU switch). Every component gets it from useBi().
+   Texts defined outside components are [de, ku] pairs: bi(...PAIR). */
+const useBi = () => {
+  const { lang } = useLang();
+  return (de, ku) => (lang === "de" ? de : ku);
+};
+/* Bi = the same for long texts / JSX */
+const Bi = ({ de, ku }) => useBi()(de, ku);
+const OPT = ["(optional)", "(ڤەبژارتی)"];
+/* Messages for <Msg>: { ok, text } or { ok, de, ku } */
+const SAVE_FAIL = { ok: false, de: "Speichern fehlgeschlagen. Prüfe die Internetverbindung.", ku: "پاراستن سەرنەکەفت. پەیوەندیا ئینتەرنێتێ بپشکنە." };
+const WAIT = { ok: true, de: "Bitte warten…", ku: "تکایە چاڤەڕێ بکە…" };
+const UPLOAD_FAIL = { ok: false, de: "Hochladen fehlgeschlagen. Bitte erneut versuchen.", ku: "بارکرنا وێنەی سەرنەکەفت. دیسا هەول بدە." };
+const NOT_IMAGE = { ok: false, de: "Bitte wähle eine Bilddatei.", ku: "تکایە فایلەکێ وێنە هەلبژێرە." };
+const NEED_COVER = { ok: false, de: "Bitte lade ein Titelbild hoch.", ku: "تکایە وێنەیەکێ بەرگی بار بکە." };
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const uid = (s) => `${s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item"}-${Math.random().toString(36).slice(2, 6)}`;
@@ -53,6 +54,7 @@ function Box({ title, children, active }) {
   );
 }
 function Row({ title, sub, badge, onEdit, onDelete, onClick, selected }) {
+  const bi = useBi();
   return (
     <div className={`flex items-center gap-2 border-b border-line py-3 last:border-b-0 sm:gap-3 ${selected ? "rounded-lg bg-soft px-2" : ""}`}>
       {badge}
@@ -73,8 +75,13 @@ function Row({ title, sub, badge, onEdit, onDelete, onClick, selected }) {
     </div>
   );
 }
-const Msg = ({ m }) => (m ? <p role="status" className="mt-3 text-sm font-medium" style={{ color: m.ok ? "var(--ok)" : "var(--bad)" }}>{m.text}</p> : null);
+function Msg({ m }) {
+  const bi = useBi();
+  if (!m) return null;
+  return <p role="status" className="mt-3 text-sm font-medium" style={{ color: m.ok ? "var(--ok)" : "var(--bad)" }}>{m.text ?? bi(m.de, m.ku)}</p>;
+}
 function SubmitRow({ editing, label, onCancel, busy }) {
+  const bi = useBi();
   return (
     <div className="mt-5 flex flex-wrap gap-3">
       <button disabled={busy} className="btn-primary inline-flex items-center gap-2 px-6 py-3">
@@ -86,6 +93,7 @@ function SubmitRow({ editing, label, onCancel, busy }) {
   );
 }
 function SearchBox({ value, onChange }) {
+  const bi = useBi();
   return (
     <div className="relative mb-3">
       <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-faint" />
@@ -94,16 +102,20 @@ function SearchBox({ value, onChange }) {
   );
 }
 const Grid = ({ children }) => <div className="grid gap-4 sm:grid-cols-2">{children}</div>;
-const LevelSelect = ({ value, onChange }) => (
-  <Field label={bi("Niveau", "ئاست")}>
-    <select className="field" value={value} onChange={(e) => onChange(e.target.value)}>
-      {levels.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
-    </select>
-  </Field>
-);
+function LevelSelect({ value, onChange }) {
+  const bi = useBi();
+  return (
+    <Field label={bi("Niveau", "ئاست")}>
+      <select className="field" value={value} onChange={(e) => onChange(e.target.value)}>
+        {levels.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
+      </select>
+    </Field>
+  );
+}
 
 /* Topic details (level + titles + optional story link), used for new and existing topics */
 function TopicFields({ v, set, kind }) {
+  const bi = useBi();
   const stories = flat("stories");
   return (
     <div className="space-y-4">
@@ -115,7 +127,7 @@ function TopicFields({ v, set, kind }) {
         <Field label={bi(`${kind.de}-Titel (Kurdisch)`, `ناڤونیشانێ ${kind.ku} (کوردی)`)}>
           <input className="field" lang="ku" dir="rtl" value={v.titleKu} onChange={(e) => set({ ...v, titleKu: e.target.value })} />
         </Field>
-        <Field label={bi("Mit einer Geschichte verknüpfen", "ب چیرۆکەکێ ڤە گرێدە")} hint={OPT}>
+        <Field label={bi("Mit einer Geschichte verknüpfen", "ب چیرۆکەکێ ڤە گرێدە")} hint={bi(...OPT)}>
           <select className="field" value={v.storyId} onChange={(e) => set({ ...v, storyId: e.target.value })}>
             <option value="">{bi("– keine –", "– چوو –")}</option>
             {stories.map((s) => <option key={s.id} value={s.id}>{lvTitle(s.level)} · {s.titleDe}</option>)}
@@ -130,6 +142,7 @@ const emptyTopic = { level: "a1", titleDe: "", titleKu: "", storyId: "" };
 /* ---------------- Overview / Übersicht / گشتی ---------------- */
 /* One-time helpers: empty database, and data that was saved in this browser before Firebase */
 function SetupBox() {
+  const bi = useBi();
   const c = getContent();
   const [localContent, setLocalContent] = useState(readLocalContent);
   const [localStudents, setLocalStudents] = useState(readLocalStudents);
@@ -191,6 +204,7 @@ function SetupBox() {
 }
 
 function OverviewTab({ go }) {
+  const bi = useBi();
   const c = getContent();
   const [note, setNote] = useState(getAnnouncement());
   const [msg, setMsg] = useState(null);
@@ -263,6 +277,7 @@ function OverviewTab({ go }) {
 /* ---------------- Stories / Geschichten / چیرۆک ---------------- */
 const emptyStory = { level: "a1", titleDe: "", titleKu: "", readTime: "", coverImage: "", text: "" };
 function StoriesTab() {
+  const bi = useBi();
   const [f, setF] = useState(emptyStory);
   const [edit, setEdit] = useState(null);
   const [q, setQ] = useState("");
@@ -271,7 +286,8 @@ function StoriesTab() {
   const fileRef = useRef(null);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
-  // Shrinks the chosen picture, uploads it to R2 and puts its link into the cover field
+  // Shrinks the chosen picture and uploads it to R2. Covers can only be set this way, so they all live in the bucket
+  // (old stories may still have an outside link until a new picture is uploaded).
   const pickCover = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow choosing the same file again
@@ -304,7 +320,8 @@ function StoriesTab() {
     });
     if (!f.titleDe.trim() || segments.length === 0)
       return setMsg({ ok: false, text: bi("Bitte gib einen deutschen Titel und mindestens einen Satz ein.", "تکایە ناڤونیشانەکێ ئەلمانی و کێم ئێک رستە بنڤیسە.") });
-    const base = { titleDe: f.titleDe.trim(), titleKu: f.titleKu.trim(), level: f.level, readTime: f.readTime.trim(), coverImage: f.coverImage.trim(), segments };
+    if (!f.coverImage) return setMsg(NEED_COVER);
+    const base = { titleDe: f.titleDe.trim(), titleKu: f.titleKu.trim(), level: f.level, readTime: f.readTime.trim(), coverImage: f.coverImage, segments };
     const story = edit ? { ...findStory(edit.level, edit.id), id: edit.id, ...base } : { id: uid(f.titleDe), ...base };
     try { await saveItem("stories", story); } catch { return setMsg(SAVE_FAIL); }
     setEdit(null); setF(emptyStory);
@@ -323,22 +340,21 @@ function StoriesTab() {
         <form onSubmit={submit} className="space-y-4">
           <Grid>
             <LevelSelect value={f.level} onChange={(x) => setF({ ...f, level: x })} />
-            <Field label={bi("Lesezeit", "دەمێ خوێندنێ")} hint={OPT}><input className="field" value={f.readTime} onChange={set("readTime")} placeholder="3 min" /></Field>
+            <Field label={bi("Lesezeit", "دەمێ خوێندنێ")} hint={bi(...OPT)}><input className="field" value={f.readTime} onChange={set("readTime")} placeholder="3 min" /></Field>
             <Field label={bi("Deutscher Titel", "ناڤونیشانێ ئەلمانی")}><input className="field" value={f.titleDe} onChange={set("titleDe")} lang="de" dir="ltr" /></Field>
             <Field label={bi("Kurdischer Titel", "ناڤونیشانێ کوردی")}><input className="field" value={f.titleKu} onChange={set("titleKu")} lang="ku" dir="rtl" /></Field>
           </Grid>
           <div>
-            <Field label={bi("Titelbild: Link oder hochladen", "وێنەیێ بەرگی: لینک یان بارکرن")} hint={OPT}>
-              <div className="flex items-start gap-2">
-                <input className="field min-w-0 flex-1" dir="ltr" value={f.coverImage} onChange={set("coverImage")} placeholder="https://..." />
-                <button type="button" onClick={() => fileRef.current.click()} disabled={uploading}
-                  className="btn-ghost mt-1 inline-flex shrink-0 items-center gap-2 px-4" aria-label={bi("Bild hochladen", "وێنەی بار بکە")}>
-                  <Upload size={17} /><span className="hidden md:inline">{bi("Bild hochladen", "وێنەی بار بکە")}</span>
-                </button>
-              </div>
-            </Field>
+            <p className="text-sm font-semibold">{bi("Titelbild", "وێنەیێ بەرگی")}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              {f.coverImage && <img src={f.coverImage} alt="" className="h-24 w-40 rounded-lg border border-line object-cover" />}
+              <button type="button" onClick={() => fileRef.current.click()} disabled={uploading}
+                className="btn-ghost inline-flex items-center gap-2 px-4 py-3">
+                <Upload size={17} />
+                {f.coverImage ? bi("Anderes Bild hochladen", "وێنەیەکێ دی بار بکە") : bi("Bild hochladen", "وێنەی بار بکە")}
+              </button>
+            </div>
             <input ref={fileRef} type="file" accept="image/*" onChange={pickCover} className="hidden" />
-            {f.coverImage && <img src={f.coverImage} alt="" className="mt-2 h-24 rounded-lg border border-line object-cover" />}
           </div>
           <Field label={bi("Geschichte", "چیرۆک")} hint={bi("ein Satz pro Zeile: Deutsch || Kurdisch", "ئێک رستە د هەر رێزەکێ دا: ئەلمانی || کوردی")}>
             <textarea className="field" rows={8} value={f.text} onChange={set("text")} dir="auto"
@@ -367,78 +383,90 @@ function StoriesTab() {
 }
 
 /* ---------------- Words + Quiz (same idea: topics that contain items) ---------------- */
+function WordFields({ f, set }) {
+  const bi = useBi();
+  return (
+    <Grid>
+      <Field label={bi("Deutsches Wort oder Ausdruck", "وشە یان دەربڕینا ئەلمانی")}><input className="field" lang="de" dir="ltr" value={f.wordDe} onChange={set("wordDe")} /></Field>
+      <Field label={bi("Kurdische Bedeutung", "رامانا کوردی")}><input className="field" lang="ku" dir="rtl" value={f.wordKu} onChange={set("wordKu")} /></Field>
+      <Field label={bi("Deutscher Beispielsatz", "رستەیا نمونەیا ئەلمانی")}><input className="field" lang="de" dir="ltr" value={f.sentenceDe} onChange={set("sentenceDe")} /></Field>
+      <Field label={bi("Kurdischer Beispielsatz", "رستەیا نمونەیا کوردی")}><input className="field" lang="ku" dir="rtl" value={f.sentenceKu} onChange={set("sentenceKu")} /></Field>
+    </Grid>
+  );
+}
+function QuestionFields({ f, set }) {
+  const bi = useBi();
+  return (
+    <div className="space-y-4">
+      <Grid>
+        <Field label={bi("Frage (Deutsch)", "پرسیار (ئەلمانی)")}><input className="field" lang="de" dir="ltr" value={f.questionDe} onChange={set("questionDe")} /></Field>
+        <Field label={bi("Frage (Kurdisch)", "پرسیار (کوردی)")}><input className="field" lang="ku" dir="rtl" value={f.questionKu} onChange={set("questionKu")} /></Field>
+      </Grid>
+      <Field label={bi("Antworten", "بەرسڤ")} hint={bi("eine pro Zeile", "ئێک د هەر رێزەکێ دا")}><textarea className="field" rows={4} dir="auto" value={f.options} onChange={set("options")} /></Field>
+      <Field label={bi("Nummer der richtigen Antwort", "ژمارا بەرسڤا درست")} hint={bi("(1 = erste Zeile)", "(1 = رێزا ئێکێ)")}><input className="field" type="number" min="1" max="6" value={f.correct} onChange={set("correct")} /></Field>
+    </div>
+  );
+}
+
+/* Texts are [de, ku] pairs (TopicTab shows them with bi(...pair)).
+   toItem returns the cleaned item, or a [de, ku] pair with the error. */
 const CFG = {
   words: {
     col: "wordTopics", items: "words",
     kind: { de: "Thema", ku: "بابەت" },
-    createOpt: bi("➕ Neues Thema erstellen…", "➕ بابەتەکێ نوو دروست بکە…"),
-    newTitle: bi("Neues Thema", "بابەتێ نوو"),
-    needTitle: bi("Bitte gib dem neuen Thema einen deutschen Titel.", "تکایە ناڤونیشانەکێ ئەلمانی بۆ بابەتێ نوو بنڤیسە."),
-    createAdd: bi("Thema erstellen und hinzufügen", "بابەت دروست بکە و زێدە بکە"),
-    createdMsg: bi("Neues Thema erstellt und Eintrag hinzugefügt ✓", "بابەتێ نوو هاتە دروستکرن و ناڤەڕۆک هاتە زێدەکرن ✓"),
-    editDetails: bi("Themen-Details bearbeiten", "دەستکاریکرنا وردەکاریێن بابەتی"),
-    allTitle: (n) => bi(`Alle Themen (${n})`, `هەمی بابەت (${n})`),
-    itemNew: bi("Wort hinzufügen", "وشەیێ زێدە بکە"),
-    itemEdit: bi("Wort bearbeiten", "دەستکاریکرنا وشەیێ"),
-    count: (n) => bi(`${n} Wörter`, `${n} وشە`),
-    inTitle: (t, n) => bi(`Wörter in „${t}“ (${n})`, `وشە د «${t}» دا (${n})`),
+    createOpt: ["➕ Neues Thema erstellen…", "➕ بابەتەکێ نوو دروست بکە…"],
+    newTitle: ["Neues Thema", "بابەتێ نوو"],
+    needTitle: ["Bitte gib dem neuen Thema einen deutschen Titel.", "تکایە ناڤونیشانەکێ ئەلمانی بۆ بابەتێ نوو بنڤیسە."],
+    createAdd: ["Thema erstellen und hinzufügen", "بابەت دروست بکە و زێدە بکە"],
+    createdMsg: ["Neues Thema erstellt und Eintrag hinzugefügt ✓", "بابەتێ نوو هاتە دروستکرن و ناڤەڕۆک هاتە زێدەکرن ✓"],
+    editDetails: ["Themen-Details bearbeiten", "دەستکاریکرنا وردەکاریێن بابەتی"],
+    allTitle: (n) => [`Alle Themen (${n})`, `هەمی بابەت (${n})`],
+    itemNew: ["Wort hinzufügen", "وشەیێ زێدە بکە"],
+    itemEdit: ["Wort bearbeiten", "دەستکاریکرنا وشەیێ"],
+    count: (n) => [`${n} Wörter`, `${n} وشە`],
+    inTitle: (t, n) => [`Wörter in „${t}“ (${n})`, `وشە د «${t}» دا (${n})`],
     empty: { wordDe: "", wordKu: "", sentenceDe: "", sentenceKu: "" },
     toItem(f) {
       if (!f.wordDe.trim() || !f.wordKu.trim())
-        return bi("Bitte fülle das deutsche Wort und die kurdische Bedeutung aus.", "تکایە وشەیا ئەلمانی و رامانا کوردی پر بکە.");
+        return ["Bitte fülle das deutsche Wort und die kurdische Bedeutung aus.", "تکایە وشەیا ئەلمانی و رامانا کوردی پر بکە."];
       return Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.trim()]));
     },
     toForm: (w) => ({ ...CFG.words.empty, ...w }),
     row: (w) => ({ title: `${w.wordDe}  —  ${w.wordKu}`, sub: w.sentenceDe }),
-    Fields: ({ f, set }) => (
-      <Grid>
-        <Field label={bi("Deutsches Wort oder Ausdruck", "وشە یان دەربڕینا ئەلمانی")}><input className="field" lang="de" dir="ltr" value={f.wordDe} onChange={set("wordDe")} /></Field>
-        <Field label={bi("Kurdische Bedeutung", "رامانا کوردی")}><input className="field" lang="ku" dir="rtl" value={f.wordKu} onChange={set("wordKu")} /></Field>
-        <Field label={bi("Deutscher Beispielsatz", "رستەیا نمونەیا ئەلمانی")}><input className="field" lang="de" dir="ltr" value={f.sentenceDe} onChange={set("sentenceDe")} /></Field>
-        <Field label={bi("Kurdischer Beispielsatz", "رستەیا نمونەیا کوردی")}><input className="field" lang="ku" dir="rtl" value={f.sentenceKu} onChange={set("sentenceKu")} /></Field>
-      </Grid>
-    ),
+    Fields: WordFields,
   },
   quiz: {
     col: "quizzes", items: "questions",
     kind: { de: "Quiz", ku: "کویز" },
-    createOpt: bi("➕ Neues Quiz erstellen…", "➕ کویزەکێ نوو دروست بکە…"),
-    newTitle: bi("Neues Quiz", "کویزەکا نوو"),
-    needTitle: bi("Bitte gib dem neuen Quiz einen deutschen Titel.", "تکایە ناڤونیشانەکێ ئەلمانی بۆ کویزا نوو بنڤیسە."),
-    createAdd: bi("Quiz erstellen und hinzufügen", "کویز دروست بکە و زێدە بکە"),
-    createdMsg: bi("Neues Quiz erstellt und Frage hinzugefügt ✓", "کویزەکا نوو هاتە دروستکرن و پرسیار هاتە زێدەکرن ✓"),
-    editDetails: bi("Quiz-Details bearbeiten", "دەستکاریکرنا وردەکاریێن کویزێ"),
-    allTitle: (n) => bi(`Alle Quizze (${n})`, `هەمی کویز (${n})`),
-    itemNew: bi("Frage hinzufügen", "پرسیارەکێ زێدە بکە"),
-    itemEdit: bi("Frage bearbeiten", "دەستکاریکرنا پرسیارێ"),
-    count: (n) => bi(`${n} Fragen`, `${n} پرسیار`),
-    inTitle: (t, n) => bi(`Fragen in „${t}“ (${n})`, `پرسیار د «${t}» دا (${n})`),
+    createOpt: ["➕ Neues Quiz erstellen…", "➕ کویزەکێ نوو دروست بکە…"],
+    newTitle: ["Neues Quiz", "کویزەکا نوو"],
+    needTitle: ["Bitte gib dem neuen Quiz einen deutschen Titel.", "تکایە ناڤونیشانەکێ ئەلمانی بۆ کویزا نوو بنڤیسە."],
+    createAdd: ["Quiz erstellen und hinzufügen", "کویز دروست بکە و زێدە بکە"],
+    createdMsg: ["Neues Quiz erstellt und Frage hinzugefügt ✓", "کویزەکا نوو هاتە دروستکرن و پرسیار هاتە زێدەکرن ✓"],
+    editDetails: ["Quiz-Details bearbeiten", "دەستکاریکرنا وردەکاریێن کویزێ"],
+    allTitle: (n) => [`Alle Quizze (${n})`, `هەمی کویز (${n})`],
+    itemNew: ["Frage hinzufügen", "پرسیارەکێ زێدە بکە"],
+    itemEdit: ["Frage bearbeiten", "دەستکاریکرنا پرسیارێ"],
+    count: (n) => [`${n} Fragen`, `${n} پرسیار`],
+    inTitle: (t, n) => [`Fragen in „${t}“ (${n})`, `پرسیار د «${t}» دا (${n})`],
     empty: { questionDe: "", questionKu: "", options: "", correct: "1" },
     toItem(f) {
       const options = f.options.split("\n").map((o) => o.trim()).filter(Boolean);
       const correct = parseInt(f.correct, 10) - 1;
-      if (!f.questionDe.trim()) return bi("Bitte schreibe die Frage.", "تکایە پرسیارەکێ بنڤیسە.");
-      if (options.length < 2) return bi("Schreibe mindestens 2 Antworten, eine pro Zeile.", "کێم 2 بەرسڤان بنڤیسە، ئێک د هەر رێزەکێ دا.");
+      if (!f.questionDe.trim()) return ["Bitte schreibe die Frage.", "تکایە پرسیارەکێ بنڤیسە."];
+      if (options.length < 2) return ["Schreibe mindestens 2 Antworten, eine pro Zeile.", "کێم 2 بەرسڤان بنڤیسە، ئێک د هەر رێزەکێ دا."];
       if (!(correct >= 0 && correct < options.length))
-        return bi(`Die Nummer der richtigen Antwort muss zwischen 1 und ${options.length} liegen.`, `ژمارا بەرسڤا درست دڤێت د ناڤبەرا 1 و ${options.length} دا بیت.`);
+        return [`Die Nummer der richtigen Antwort muss zwischen 1 und ${options.length} liegen.`, `ژمارا بەرسڤا درست دڤێت د ناڤبەرا 1 و ${options.length} دا بیت.`];
       return { questionDe: f.questionDe.trim(), questionKu: f.questionKu.trim(), options, correctAnswer: correct };
     },
     toForm: (q) => ({ questionDe: q.questionDe, questionKu: q.questionKu || "", options: q.options.join("\n"), correct: String(q.correctAnswer + 1) }),
-    row: (q, i) => ({ title: `${i + 1}. ${q.questionDe}`, sub: `${bi("Richtig", "درست")}: ${q.options[q.correctAnswer]}` }),
-    Fields: ({ f, set }) => (
-      <div className="space-y-4">
-        <Grid>
-          <Field label={bi("Frage (Deutsch)", "پرسیار (ئەلمانی)")}><input className="field" lang="de" dir="ltr" value={f.questionDe} onChange={set("questionDe")} /></Field>
-          <Field label={bi("Frage (Kurdisch)", "پرسیار (کوردی)")}><input className="field" lang="ku" dir="rtl" value={f.questionKu} onChange={set("questionKu")} /></Field>
-        </Grid>
-        <Field label={bi("Antworten", "بەرسڤ")} hint={bi("eine pro Zeile", "ئێک د هەر رێزەکێ دا")}><textarea className="field" rows={4} dir="auto" value={f.options} onChange={set("options")} /></Field>
-        <Field label={bi("Nummer der richtigen Antwort", "ژمارا بەرسڤا درست")} hint={bi("(1 = erste Zeile)", "(1 = رێزا ئێکێ)")}><input className="field" type="number" min="1" max="6" value={f.correct} onChange={set("correct")} /></Field>
-      </div>
-    ),
+    row: (q, i, bi) => ({ title: `${i + 1}. ${q.questionDe}`, sub: `${bi("Richtig", "درست")}: ${q.options[q.correctAnswer]}` }),
+    Fields: QuestionFields,
   },
 };
 
 function TopicTab({ kind }) {
+  const bi = useBi();
   const cfg = CFG[kind];
   const topics = flat(cfg.col);
   const [sel, setSel] = useState("");
@@ -458,8 +486,8 @@ function TopicTab({ kind }) {
   const submitItem = async (e) => {
     e.preventDefault();
     const item = cfg.toItem(f);
-    if (typeof item === "string") return setMsg({ ok: false, text: item });
-    if (eff === "new" && !nt.titleDe.trim()) return setMsg({ ok: false, text: cfg.needTitle });
+    if (Array.isArray(item)) return setMsg({ ok: false, text: bi(...item) });
+    if (eff === "new" && !nt.titleDe.trim()) return setMsg({ ok: false, text: bi(...cfg.needTitle) });
     let t;
     if (eff === "new") {
       t = { id: uid(nt.titleDe), level: nt.level, titleDe: nt.titleDe.trim(), titleKu: nt.titleKu.trim(), [cfg.items]: [item] };
@@ -474,7 +502,7 @@ function TopicTab({ kind }) {
     setEditItem(null); setF(cfg.empty);
     setMsg({
       ok: true,
-      text: eff === "new" ? cfg.createdMsg : editItem !== null ? bi("Änderungen gespeichert ✓", "گوهۆڕین هاتنە پاراستن ✓") : bi("Hinzugefügt ✓", "هاتە زێدەکرن ✓"),
+      text: eff === "new" ? bi(...cfg.createdMsg) : editItem !== null ? bi("Änderungen gespeichert ✓", "گوهۆڕین هاتنە پاراستن ✓") : bi("Hinzugefügt ✓", "هاتە زێدەکرن ✓"),
     });
   };
 
@@ -500,34 +528,34 @@ function TopicTab({ kind }) {
     removeItem(cfg.col, t.id).catch(() => setMsg(SAVE_FAIL));
   };
 
-  const items = (current?.[cfg.items] || []).map((it, i) => ({ it, i })).filter(({ it, i }) => `${cfg.row(it, i).title}`.toLowerCase().includes(q.trim().toLowerCase()));
+  const items = (current?.[cfg.items] || []).map((it, i) => ({ it, i })).filter(({ it, i }) => `${cfg.row(it, i, bi).title}`.toLowerCase().includes(q.trim().toLowerCase()));
 
   return (
     <>
-      <Box title={editItem !== null ? cfg.itemEdit : cfg.itemNew} active={editItem !== null}>
+      <Box title={bi(...(editItem !== null ? cfg.itemEdit : cfg.itemNew))} active={editItem !== null}>
         <form onSubmit={submitItem} className="space-y-4">
           <Field label={bi(cfg.kind.de, cfg.kind.ku)}>
             <select className="field" value={eff} disabled={editItem !== null} onChange={(e) => { setSel(e.target.value); setMsg(null); }}>
               {topics.map((t) => <option key={keyOf(t)} value={keyOf(t)}>{lvTitle(t.level)} · {t.titleDe} ({t[cfg.items].length})</option>)}
-              <option value="new">{cfg.createOpt}</option>
+              <option value="new">{bi(...cfg.createOpt)}</option>
             </select>
           </Field>
 
           {eff === "new" && (
             <div className="rounded-xl border border-dashed p-4" style={{ borderColor: "var(--brand)" }}>
-              <p className="mb-3 text-sm font-semibold">{cfg.newTitle}</p>
+              <p className="mb-3 text-sm font-semibold">{bi(...cfg.newTitle)}</p>
               <TopicFields v={nt} set={setNt} kind={cfg.kind} />
             </div>
           )}
 
           <cfg.Fields f={f} set={setItem} />
-          <SubmitRow editing={editItem !== null} label={eff === "new" ? cfg.createAdd : cfg.itemNew} onCancel={cancelItem} />
+          <SubmitRow editing={editItem !== null} label={bi(...(eff === "new" ? cfg.createAdd : cfg.itemNew))} onCancel={cancelItem} />
           <Msg m={msg} />
         </form>
       </Box>
 
       {editTopic && (
-        <Box title={cfg.editDetails} active>
+        <Box title={bi(...cfg.editDetails)} active>
           <form onSubmit={saveTopic}>
             <TopicFields v={editTopic} set={(v) => setEditTopic({ ...editTopic, ...v })} kind={cfg.kind} />
             <SubmitRow editing label="" onCancel={() => setEditTopic(null)} />
@@ -535,11 +563,11 @@ function TopicTab({ kind }) {
         </Box>
       )}
 
-      <Box title={cfg.allTitle(topics.length)}>
+      <Box title={bi(...cfg.allTitle(topics.length))}>
         {topics.length === 0 && <p className="text-muted">{bi("Noch nichts da. Benutze das Formular oben, um das Erste zu erstellen.", "هێشتا چ نینە. فۆرما سەری بکاربینە بۆ دروستکرنا ئێکەم.")}</p>}
         {topics.map((t) => (
           <Row key={keyOf(t)} badge={<LevelBadge level={getLevel(t.level)} />} selected={keyOf(t) === eff}
-            title={t.titleDe} sub={`${cfg.count(t[cfg.items].length)}${t.storyId ? ` · ${bi("mit Geschichte verknüpft", "ب چیرۆکێ ڤە گرێدایە")}` : ""}`}
+            title={t.titleDe} sub={`${bi(...cfg.count(t[cfg.items].length))}${t.storyId ? ` · ${bi("mit Geschichte verknüpft", "ب چیرۆکێ ڤە گرێدایە")}` : ""}`}
             onClick={() => { setSel(keyOf(t)); cancelItem(); }}
             onEdit={() => { setEditTopic({ level: t.level, oldLevel: t.level, id: t.id, titleDe: t.titleDe, titleKu: t.titleKu || "", storyId: t.storyId || "" }); top(); }}
             onDelete={() => delTopic(t)} />
@@ -547,11 +575,11 @@ function TopicTab({ kind }) {
       </Box>
 
       {current && (
-        <Box title={cfg.inTitle(current.titleDe, current[cfg.items].length)}>
+        <Box title={bi(...cfg.inTitle(current.titleDe, current[cfg.items].length))}>
           <SearchBox value={q} onChange={setQ} />
           {items.length === 0 && <p className="text-muted">{bi("Nichts gefunden.", "چ نەهاتە دیتن.")}</p>}
           {items.map(({ it, i }) => {
-            const r = cfg.row(it, i);
+            const r = cfg.row(it, i, bi);
             return <Row key={i} title={r.title} sub={r.sub} onEdit={() => { setEditItem(i); setF(cfg.toForm(it)); setMsg(null); top(); }} onDelete={() => delItem(i)} />;
           })}
         </Box>
@@ -563,6 +591,7 @@ function TopicTab({ kind }) {
 /* ---------------- Students / Schüler / قوتابی ---------------- */
 const emptyStu = { name: "", className: "", level: "A1" };
 function StudentsTab({ students }) {
+  const bi = useBi();
   const [f, setF] = useState(emptyStu);
   const [edit, setEdit] = useState(null); // uid of the student being edited
   const [q, setQ] = useState("");
@@ -623,6 +652,7 @@ function StudentsTab({ students }) {
 
 /* ---------------- Backup / Sicherung / پاشەکەوت ---------------- */
 function BackupTab() {
+  const bi = useBi();
   const [msg, setMsg] = useState(null);
   const run = async (fn, okText) => {
     setMsg(WAIT);
@@ -646,6 +676,17 @@ function BackupTab() {
     if (!window.confirm(bi("Den gesamten Inhalt für alle Schüler durch diese Datei ersetzen?", "هەمی ناڤەڕۆکێ بۆ هەمی قوتابیان ب ڤی فایلی بگوهۆڕی؟"))) return;
     run(() => replaceAllContent(data), bi("Inhalt importiert ✓", "ناڤەڕۆک هاتە هاوردن ✓"));
   };
+  // Safe: only writes built-in items that aren't in the database yet, deletes nothing
+  const addMissing = async () => {
+    setMsg(WAIT);
+    try {
+      const n = await addMissingBuiltIn();
+      setMsg({ ok: true, text: n ? bi(`${n} neue Einträge hinzugefügt ✓`, `${n} تشتێن نوو هاتنە زێدەکرن ✓`) : bi("Alles ist schon da ✓", "هەمی تشت یێ هەیە ✓") });
+    } catch (err) {
+      console.error(err);
+      setMsg(SAVE_FAIL);
+    }
+  };
   const reset = () => {
     if (window.confirm(bi("Alles entfernen, was du hinzugefügt hast, und zum eingebauten Inhalt zurückgehen?", "هەمی ئەوێ تە زێدە کری بسڕی و بزڤڕی بۆ ناڤەڕۆکا ئامادەکراو؟"))) {
       run(() => replaceAllContent(builtIn()), bi("Inhalt zurückgesetzt ✓", "ناڤەڕۆک زڤڕیە ✓"));
@@ -664,6 +705,7 @@ function BackupTab() {
         <label className="btn-ghost inline-flex cursor-pointer items-center px-5 py-3">
           {bi("Inhalt importieren", "ناڤەڕۆکێ هاوردە بکە")}<input type="file" accept="application/json" onChange={importFile} className="sr-only" />
         </label>
+        <button onClick={addMissing} className="btn-ghost px-5 py-3">{bi("Neue eingebaute Inhalte hinzufügen", "ناڤەڕۆکا ئامادەکراو یا نوو زێدە بکە")}</button>
         <button onClick={reset} className="btn-danger px-5 py-3">{bi("Auf Standard zurücksetzen", "بزڤڕە بۆ ئامادەکراو")}</button>
       </div>
       <Msg m={msg} />
@@ -673,15 +715,16 @@ function BackupTab() {
 
 /* ---------------- Page ---------------- */
 const tabs = [
-  ["overview", bi("Übersicht", "گشتی")],
-  ["stories", bi("Geschichten", "چیرۆک")],
-  ["words", bi("Wörter", "وشە")],
-  ["quiz", bi("Quiz", "کویز")],
-  ["students", bi("Schüler", "قوتابی")],
-  ["backup", bi("Sicherung", "پاشەکەوت")],
+  ["overview", "Übersicht", "گشتی"],
+  ["stories", "Geschichten", "چیرۆک"],
+  ["words", "Wörter", "وشە"],
+  ["quiz", "Quiz", "کویز"],
+  ["students", "Schüler", "قوتابی"],
+  ["backup", "Sicherung", "پاشەکەوت"],
 ];
 
 export default function Dashboard() {
+  const bi = useBi();
   const [tab, setTab] = useState("overview");
   const students = useStudents();
   const c = getContent();
@@ -702,7 +745,7 @@ export default function Dashboard() {
   }[tab];
 
   return (
-    <div dir="ltr" lang="de">
+    <div>
       <PageHeader
         title={bi("Dashboard", "داشبۆرد")}
         subtitle={bi("Geschichten, Wortthemen, Quizze und Schüler hinzufügen, bearbeiten oder löschen.", "چیرۆک، بابەتێ وشە، کویز و قوتابیان زێدە بکە، دەستکاری بکە یان بسڕە.")}
@@ -717,10 +760,10 @@ export default function Dashboard() {
         ))}
       </div>
       <div role="tablist" className="-mx-1 mb-6 flex gap-2 overflow-x-auto p-1">
-        {tabs.map(([id, label]) => (
+        {tabs.map(([id, de, ku]) => (
           <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
             className={`shrink-0 px-4 py-2.5 font-semibold ${tab === id ? "btn-primary" : "btn-ghost"}`}>
-            {label}
+            {bi(de, ku)}
           </button>
         ))}
       </div>
