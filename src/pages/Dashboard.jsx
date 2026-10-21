@@ -10,6 +10,7 @@ import { useStudents, createStudent, updateStudent, deleteStudent, readLocalStud
 import { getAnnouncement, setAnnouncement } from "../data/settings";
 import { toJpeg, uploadImage } from "../services/upload";
 import { useLang } from "../context/LangContext";
+import { IMAGES_URL } from "../config";
 
 // Besitzer-Dashboard / داشبۆردا خودانی. Only German + Kurdish (Badini, Arabic script). No English.
 
@@ -677,6 +678,32 @@ function BackupTab() {
     run(() => replaceAllContent(data), bi("Inhalt importiert ✓", "ناڤەڕۆک هاتە هاوردن ✓"));
   };
   // Safe: only writes built-in items that aren't in the database yet, deletes nothing
+  // Every story cover that isn't in the R2 bucket yet: built-in stories get their bucket cover from the code,
+  // other stories get their picture downloaded, shrunk and uploaded. Nothing else in the story changes.
+  const moveCovers = async () => {
+    setMsg(WAIT);
+    const fromCode = Object.fromEntries(Object.values(builtIn().stories).flat().map((s) => [s.id, s.coverImage]));
+    let moved = 0, failed = 0;
+    for (const s of flat("stories")) {
+      if (!s.coverImage || s.coverImage.startsWith(IMAGES_URL)) continue;
+      try {
+        let url = fromCode[s.id]?.startsWith(IMAGES_URL) ? fromCode[s.id] : null;
+        if (!url) {
+          const res = await fetch(s.coverImage);
+          if (!res.ok) throw new Error(`download ${res.status}`);
+          url = await uploadImage("cover", await toJpeg(await res.blob(), { size: 1600 }));
+        }
+        await saveItem("stories", { ...s, coverImage: url });
+        moved++;
+      } catch (err) {
+        console.error(`Cover of "${s.id}":`, err);
+        failed++;
+      }
+    }
+    setMsg(failed
+      ? { ok: false, text: bi(`${moved} Titelbilder verschoben, ${failed} fehlgeschlagen. Lade diese in „Geschichten“ neu hoch.`, `${moved} وێنەیێن بەرگی هاتنە ڤەگوهاستن، ${failed} سەرنەکەفتن. وان د «چیرۆک» دا دووبارە بار بکە.`) }
+      : { ok: true, text: moved ? bi(`${moved} Titelbilder in den Speicher verschoben ✓`, `${moved} وێنەیێن بەرگی هاتنە ڤەگوهاستن ✓`) : bi("Alle Titelbilder sind schon im Speicher ✓", "هەمی وێنەیێن بەرگی یێ ل جهێ خۆ نە ✓") });
+  };
   const addMissing = async () => {
     setMsg(WAIT);
     try {
@@ -706,6 +733,7 @@ function BackupTab() {
           {bi("Inhalt importieren", "ناڤەڕۆکێ هاوردە بکە")}<input type="file" accept="application/json" onChange={importFile} className="sr-only" />
         </label>
         <button onClick={addMissing} className="btn-ghost px-5 py-3">{bi("Neue eingebaute Inhalte hinzufügen", "ناڤەڕۆکا ئامادەکراو یا نوو زێدە بکە")}</button>
+        <button onClick={moveCovers} className="btn-ghost px-5 py-3">{bi("Titelbilder in den Speicher verschieben", "وێنەیێن بەرگی ڤەگوهێزە بۆ جهێ پاراستنێ")}</button>
         <button onClick={reset} className="btn-danger px-5 py-3">{bi("Auf Standard zurücksetzen", "بزڤڕە بۆ ئامادەکراو")}</button>
       </div>
       <Msg m={msg} />

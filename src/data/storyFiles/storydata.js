@@ -1,10 +1,12 @@
+import { IMAGES_URL } from "../../config";
+
 export const a1GreetingsStory = {
   id: "ein-tag-mit-freunden",
   titleDe: "Ein Tag mit Freunden",
   titleKu: "رۆژەک دگەل هەڤالان",
   level: "A1 (Anfänger)",
   readTime: "3 min",
-  coverImage: "/images/hallo.png",
+  coverImage: `${IMAGES_URL}/covers/ein-tag-mit-freunden.png`,
   segments: [
     { de: "Alan sieht seinen Freund Lukas. Lukas sagt: 'Guten Morgen! Wie geht's?'", ku: "ئالان هەڤالێ خۆ لوکاسی دبینیت. لوکاس دبێژیت: 'سپێدە باش! تو چەوایی؟'" },
     { de: "Alan antwortet: 'Hallo, wie geht es dir?'", ku: "ئالان بەرسڤێ ددەت: 'سڵاو، تو چەوایی؟'" },
@@ -182,7 +184,7 @@ export const a2PersoenlicheInformationenStory = {
   titleKu: "زانیاریێن کەسایەتی ل دەمێ تۆمارکرنێ",
   level: "A1 (Anfänger)",
   readTime: "4 min",
-  coverImage: "https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&q=80&w=1200",
+  coverImage: `${IMAGES_URL}/covers/persoenliche-informationen.jpg`,
   segments: [
     { de: "Das ist Anna. Sie ist neu in Berlin und geht heute zum Amt.", ku: "ئەڤە ئانا یە. ئەو نوی یە ل بەرلینێ و ئەڤرۆ دچیتە فەرمانگەهێ." },
     { de: "Am Schalter fragt ein Herr: 'Wie heißen Sie? Was ist Ihr Vorname?'", ku: "ل سەر مێزێ بەرێزەک پرسیار دکەت: 'ناڤێ تە چیە؟ ناڤێ تە یێ ئێکێ چیە؟'" },

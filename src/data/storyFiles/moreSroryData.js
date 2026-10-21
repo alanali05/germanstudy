@@ -1,213 +1,152 @@
-export const a1EinkaufenStory = {
-  id: "einkaufen-im-supermarkt",
-  titleDe: "Einkaufen im Supermarkt",
-  titleKu: "کریین ل سووپر مارکێتێ",
-  level: "A1 (Anfänger)",
+import { IMAGES_URL } from "../../config";
+
+export const a2WohnungssucheStory = {
+  id: "wohnungssuche-in-der-stadt",
+  titleDe: "Die Wohnungssuche in der Stadt",
+  titleKu: "لێگەریان ل دووڤ خانوویەکێ ل باژێری",
+  level: "A2 (Grundlegende Kenntnisse)",
   readTime: "4 min",
-  coverImage: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=1200",
+  coverImage: `${IMAGES_URL}/covers/wohnungssuche-in-der-stadt.jpg`,
   segments: [
-    { de: "Maria geht in den Supermarkt. Sie braucht Obst und Gemüse.", ku: "ماریا دچیتە سووپر مارکێتێ. ئەو پێویستیا وێ ب مێوە و سەوزاتیان هەیە." },
-    { de: "Sie nimmt einen Einkaufswagen und geht hinein.", ku: "ئەو تڕۆلییەکێ (ئارابەکا کریێ) هەلدگریت و دچیتە ژوور." },
-    { de: "Ein Verkäufer fragt: 'Kann ich Ihnen helfen?'", ku: "فرۆشیارەک پرسیار دکەت: 'ئەز دشێم هاریکاریا وە بکەم؟'" },
-    { de: "Maria antwortet: 'Ja, bitte. Wo sind die Tomaten?'", ku: "ماریا بەرسڤێ ددەت: 'بەڵێ، کەرەم بکە. تەماتە ل کیڤەنە؟'" },
-    { de: "Der Verkäufer sagt: 'Die Tomaten sind dort drüben. Brauchen Sie auch Äpfel?'", ku: "فرۆشیار دبێژیت: 'تەماتە ل وێڤەنە. ئەرێ پێویستیا تە ب سیڤان ژی هەیە؟'" },
-    { de: "Maria sagt: 'Nein, danke. Ich brauche nur Brot und Milch.'", ku: "ماریا دبێژیت: 'نەخێر، سوپاس. پێویستیا من تنێ ب نان و شیر هەیە.'" },
-    { de: "Sie legt alles in den Einkaufswagen.", ku: "ئەو هەمی تشتان دئێخیتە د تڕۆلیێ دا." },
-    { de: "An der Kasse fragt die Kassiererin: 'Haben Sie eine Tasche?'", ku: "ل سەر کاسەیێ (پارەوەرگرتنێ) ژنا کاسە پرسیار دکەت: 'ئەرێ چانتەک دگەل تە هەیە؟'" },
-    { de: "Maria sagt: 'Ja, ich habe eine Tasche.'", ku: "ماریا دبێژیت: 'بەڵێ، چانتەک دگەل من هەیە.'" },
-    { de: "Die Kassiererin sagt: 'Das macht zusammen zehn Euro und fünfzig Cent.'", ku: "ژنە کاسە دبێژیت: 'ئەڤە هەمی دبن دەهـ یوورو و پێنچی سەنت.'" },
-    { de: "Maria bezahlt mit Karte und sagt: 'Vielen Dank!'", ku: "ماریا ب کارتێ پارەی ددەت و دبێژیت: 'گەلەک سوپاس!'" },
-    { de: "Die Kassiererin antwortet: 'Bitte schön. Auf Wiedersehen!'", ku: "ژنە کاسە بەرسڤێ ددەت: 'کەرەم بکە. ب هیڤیا دیدارا دووبارە!'" }
+    { de: "Markus wohnt zur Miete, aber er möchte umziehen, weil seine aktuelle Wohnung zu klein ist.", ku: "مارکوس ب کرێ ل وێ دژیت، لێ ئەو دخوازم کۆچ بکەت، ژ بەر کو خانیێ وی یێ نها گەلەک بچووکە." },
+    { de: "Deshalb liest er jeden Tag die Anzeigen in der Zeitung und im Internet.", ku: "ژ بەر ڤێ چەندێ، ئەو هەمی رۆژان دەلالەتێن رۆژنامێ و اینتەرنێتێ دژمێرێت." },
+    { de: "Gestern hat er eine schöne Dreizimmerwohnung gefunden, die einen großen Balkon hat.", ku: "دوهی وی خانیەکێ جوان یێ سێ ژووری دیت، یێ کو باڵکۆنەکا مەزن هەی." },
+    { de: "Er hat sofort angerufen und einen Besichtigungstermin vereinbart.", ku: "وی ب لێکن تەلەفۆن کر و نۆبەک بۆ سەرەدانا خانی دانوستاند." },
+    { de: "Der Vermieter hat ihm die Wohnung gezeigt und erklärt, dass die Warmmiete inklusive Nebenkosten ist.", ku: "خانیڤان (خانی خودان) خانی بۆ نیشان دا و شرۆڤە کر کو کریا گەرم دگەل خەرجیێن زێدەترە." },
+    { de: "Markus war sofort begeistert, weil die Küche modern und die Lage sehr ruhig ist.", ku: "مارکوس دەستبەجێ حەز ژێ کر، ژ بەر کو چێشتخانە یا نوی بوو و جهـ گەلەک ب سەقامگیر و ئارام بوو." },
+    { de: "Er hat den Mietvertrag unterschrieben und freut sich schon auf den Umzug im nächsten Monat.", ku: "وی گرێبەستا کرێ ئیمزا کر و ژ نوکە ڤە بێچۆنا خۆشحالیێ دکەت بۆ ڤەگۆهێزتنا هەیڤا بهێت." }
   ],
   vocabulary: [
-    { wordDe: "Der Supermarkt Supermärkte", sentenceDe: "Maria geht in den Supermarkt. Akkusativ", wordKu: "سووپر مارکێت", sentenceKu: "ماریا دچیتە سووپر مارکێتێ. (ئەکوزاتیڤ)" },
-    { wordDe: "Das Obst", sentenceDe: "Sie braucht Obst.", wordKu: "مێوە", sentenceKu: "پێویستیا وێ ب مێوەیان هەیە." },
-    { wordDe: "Das Gemüse", sentenceDe: "Sie braucht Gemüse.", wordKu: "سەوزاتی", sentenceKu: "پێویستیا وێ ب سەوزاتیان هەیە." },
-    { wordDe: "Der Einkaufswagen Einkaufswagen", sentenceDe: "Sie nimmt einen Einkaufswagen.", wordKu: "تڕۆلی / ئارابا کریێ", sentenceKu: "ئەو تڕۆلییەکێ هەلدگریت." },
-    { wordDe: "Die Tomate Tomaten", sentenceDe: "Wo sind die Tomaten?", wordKu: "تەماتە", sentenceKu: "تەماتە ل کیڤەنە؟" },
-    { wordDe: "Der Apfel Äpfel", sentenceDe: "Brauchen Sie auch Äpfel?", wordKu: "سیڤ", sentenceKu: "ئەرێ پێویستیا تە ب سیڤان ژی هەیە؟" },
-    { wordDe: "Das Brot Brote", sentenceDe: "Ich brauche Brot.", wordKu: "نان", sentenceKu: "پێویستیا من ب نانی هەیە." },
-    { wordDe: "Die Milch", sentenceDe: "Ich brauche Milch.", wordKu: "شیر", sentenceKu: "پێویستیا من ب شیری هەیە." },
-    { wordDe: "Die Kasse Kassen", sentenceDe: "An der Kasse fragt die Kassiererin.", wordKu: "کاسە / جهێ پارەدانێ", sentenceKu: "ل کاسەیێ ژنا کاسە پرسیار دکەت." },
-    { wordDe: "Die Tasche Taschen", sentenceDe: "Haben Sie eine Tasche?", wordKu: "چانتە", sentenceKu: "ئەرێ چانتەک دگەل تە هەیە؟" },
-    { wordDe: "Der Euro Euros", sentenceDe: "Das macht zehn Euro.", wordKu: "یوورو", sentenceKu: "ئەڤە دبن دەهـ یوورو." },
-    { wordDe: "Der Cent Cents", sentenceDe: "Und fünfzig Cent.", wordKu: "سەنت", sentenceKu: "و پێنچی سەنت." },
-    { wordDe: "Bezahlen", sentenceDe: "Maria bezahlt mit Karte. Dativ", wordKu: "پارەدان", sentenceKu: "ماریا ب کارتێ پارەی ددەت. (داتیڤ)" },
-    { wordDe: "Die Karte Karten", sentenceDe: "Sie bezahlt mit Karte.", wordKu: "کارت", sentenceKu: "ئەو ب کارتێ پارەی ددەت." }
+    { wordDe: "Die Miete Mieten", sentenceDe: "Er wohnt zur Miete.", wordKu: "کرێ", sentenceKu: "ئەو ب کرێ ل وێ دژیت." },
+    { wordDe: "Umziehen", sentenceDe: "Er möchte umziehen.", wordKu: "کۆچکرن / گوهۆڕینا جهی", sentenceKu: "ئەو دخوازم کۆچ بکەت." },
+    { wordDe: "Die Anzeige Anzeigen", sentenceDe: "Er liest die Anzeigen in der Zeitung.", wordKu: "دەلالەت / ڕیکلام", sentenceKu: "ئەو دەلالەتێن رۆژنامێ دژمێرێت." },
+    { wordDe: "Der Vermieter Vermieter", sentenceDe: "Der Vermieter hat die Wohnung gezeigt.", wordKu: "خانیڤان / خودانێ خانی", sentenceKu: "خانیڤانی خانی نیشان دا." },
+    { wordDe: "Die Nebenkosten", sentenceDe: "Die Miete ist inklusive Nebenkosten.", wordKu: "خەرجیێن زێدە (ئاو، دەستخۆشی و هتد)", sentenceKu: "کرێ خەرجیێن زێدە ژی ل خۆ دگریت." },
+    { wordDe: "Der Mietvertrag Mietverträge", sentenceDe: "Er hat den Mietvertrag unterschrieben.", wordKu: "گرێبەستا کرێ", sentenceKu: "وی گرێبەستا کرێ ئیمزا کر." }
   ],
   quiz: [
-    { questionDe: "Was bedeutet 'Der Supermarkt'?", questionKu: "رامانا 'Der Supermarkt' چییە؟", options: ["سووپر مارکێت", "نەخۆشخانە", "فەرمانگەهـ", "مال"], correctAnswer: 0 },
-    { questionDe: "Wie sagt man 'مێوە' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'مێوە' ب ئەلمانی؟", options: ["Das Gemüse", "Das Obst", "Das Brot", "Die Milch"], correctAnswer: 1 },
-    { questionDe: "Was bedeutet 'Das Gemüse'?", questionKu: "رامانا 'Das Gemüse' چییە؟", options: ["سەوزاتی", "مێوە", "نان", "شیر"], correctAnswer: 0 },
-    { questionDe: "Was bedeutet 'Der Einkaufswagen'?", questionKu: "رامانا 'Der Einkaufswagen' چییە؟", options: ["چانتە", "تڕۆلی / ئارابا کریێ", "کارت", "پاسپۆرت"], correctAnswer: 1 },
-    { questionDe: "Wie sagt man 'تەماتە' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'تەماتە' ب ئەلمانی؟", options: ["Die Tomate", "Der Apfel", "Das Brot", "Die Tasche"], correctAnswer: 0 },
-    { questionDe: "Was bedeutet 'Der Apfel'?", questionKu: "رامانا 'Der Apfel' چییە؟", options: ["مۆز", "سیڤ", "پرتەقال", "تەماتە"], correctAnswer: 1 },
-    { questionDe: "Was bedeutet 'Das Brot'?", questionKu: "رامانا 'Das Brot' چییە؟", options: ["شیر", "ئاو", "نان", "قاوە"], correctAnswer: 2 },
-    { questionDe: "Wie sagt man 'شیر' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'شیر' ب ئەلمانی؟", options: ["Die Milch", "Das Brot", "Das Obst", "Die Tasche"], correctAnswer: 0 },
-    { questionDe: "Was bedeutet 'Die Kasse'?", questionKu: "رامانا 'Die Kasse' چییە؟", options: ["دەرگەهـ", "کاسە / جهێ پارەدانێ", "مێز", "کورسی"], correctAnswer: 1 },
-    { questionDe: "Wie sagt man 'چانتە' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'چانتە' ب ئەلمانی؟", options: ["Die Tasche", "Die Kasse", "Die Karte", "Das Auto"], correctAnswer: 0 },
-    { questionDe: "Was bedeutet 'Bezahlen'?", questionKu: "رامانا 'Bezahlen' چییە؟", options: ["کرن", "پارەدان", "خارن", "قسەکرن"], correctAnswer: 1 }
+    { questionDe: "Was bedeutet 'Die Miete'?", questionKu: "رامانا 'Die Miete' چییە؟", options: ["کرێ", "فڕۆتن", "خانیڤان", "گرێبەست"], correctAnswer: 0 },
+    { questionDe: "Wie sagt man 'خانیڤان' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'خانیڤان' ب ئەلمانی؟", options: ["Der Vermieter", "Der Mieter", "Der Nachbar", "Der Arzt"], correctAnswer: 0 },
+    { questionDe: "Was bedeutet 'Der Mietvertrag'?", questionKu: "رامانا 'Der Mietvertrag' چییە؟", options: ["گرێبەستا کرێ", "پاسپۆرت", "ناسنامە", "فاکتورە"], correctAnswer: 0 }
   ]
 };
 
-export const a1FamilieUndWohnenStory = {
-  id: "familie-und-wohnen",
-  titleDe: "Meine Familie und Wohnung",
-  titleKu: "خێزانا من و جهێ ژینێ",
-  level: "A1 (Anfänger)",
+export const a2BeimArztStory = {
+  id: "termin-beim-arzt",
+  titleDe: "Ein Termin beim Arzt",
+  titleKu: "نۆبە ل دەف پزیشکی",
+  level: "A2 (Grundlegende Kenntnisse)",
   readTime: "4 min",
-  coverImage: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=1200",
+  coverImage: `${IMAGES_URL}/covers/termin-beim-arzt.jpg`,
   segments: [
-    { de: "Hallo! Ich heiße Thomas. Das ist meine Familie.", ku: "سڵاو! ناڤێ من تۆماسە. ئەڤە خێزانا منە." },
-    { de: "Wir wohnen in einem schönen Haus in Köln.", ku: "ئەم ل خانووەکێ جوان ل کۆلنێ دژین." },
-    { de: "Das ist meine Frau. Sie heißt Sarah und ist Lehrerin.", ku: "ئەڤە ژنا منە. ناڤێ وێ سارایە و مامۆستایە." },
-    { de: "Wir haben zwei Kinder, einen Sohn und eine Tochter.", ku: "دو زارۆکێن مە هەنە، کوڕەک و کچەک." },
-    { de: "Unser Sohn heißt Leon und unsere Tochter heißt Mia.", ku: "ناڤێ کوڕێ مە لەونە و ناڤێ کچا مە میایە." },
-    { de: "Unser Haus hat vier Zimmer, eine Küche und ein Bad.", ku: "خانیێ مە چار ژوور، آشپەخانەک (چێشتخانە) و دەستشۆرەک هەنە." },
-    { de: "Das Wohnzimmer ist groß und hell.", ku: "ژوورا نیشتەجێبوونێ (مێهڤانخانە) مەزن و روشەنە." },
-    { de: "In der Küche kocht Sarah gerne.", ku: "سارا حەز دکەت ل چێشتخانێ بخوەرۆسیت (بچێژیت)." },
-    { de: "Im Garten spielen die Kinder am Nachmittag.", ku: "ل باغچەیی زارۆک ل نیڤرۆ یارییان دکەن." },
-    { de: "Wir haben auch eine Katze. Sie ist klein und schwarz.", ku: "پشیلەک ژی یا مە هەیە. ئەو بچووک و ڕەشە." },
-    { de: "Wir sind sehr glücklich in unserem neuen Zuhause.", ku: "ئەم گەلەک ب خۆشحالین ل خانیێ خۆ یێ نوی." }
+    { de: "Claudia hat seit drei Tagen starke Halsschmerzen und Fieber.", ku: "کلاودیا ژ سێ رۆژان ڤە ئێشەکا مەزن د گەرووی خۆ دا هەیە و تبا وێ یا هەی." },
+    { de: "Sie ruft in der Praxis an, um einen Termin zu vereinbaren.", ku: "ئەو تەلەفۆن بۆ نۆبەردارگەهێ دکەت دا کو نۆبەکێ دەستنیشان بکەت." },
+    { de: "Die Sprechstundenhilfe sagt: 'Kommen Sie bitte heute um zehn Uhr vorbei.'", ku: "کچە کارگێرا نۆبەردارگەهێ دبێژیت: 'کەرەم بکە ئەڤرۆ دەمژمێر دەهـ وەرە.'" },
+    { de: "Im Wartezimmer muss Claudia zwanzig Minuten warten, bis sie aufgerufen wird.", ku: "ل ژوورا ڤەواندنێ پێڤە دیارە کلاودیا بڤێت بیست خولەکان لبەر خۆ بگری هەتا کو هاتییە بانگکرن." },
+    { de: "Der Arzt untersucht sie gründlich und stellt fest, dass sie eine Mandelentzündung hat.", ku: "پزیشک پشکنینەکا باوەرپێکری بۆ دکەت و دیار دکەت کو مێشکێن بەرۆکێن وێ تووشی هەوکردنێ بووینە." },
+    { de: "Er verschreibt ihr Tabletten und empfiehlt, dass sie sich einige Tage im Bett ausruht.", ku: "ئەو حبوبان بۆ دڤەگۆهێزیت و پێشنیار دکەت کو ئەو هندەک رۆژان ل سەر جێگایی بهێنڤەدانێ بکەت." },
+    { de: "Claudia holt die Medikamente in der Apotheke ab und geht direkt nach Hause.", ku: "کلاودیا دەرمانان ژ دەرمانخانەیێ دئینیت و راستەوخۆ دچیتە مال." }
   ],
   vocabulary: [
-    { wordDe: "Die Familie Familien", sentenceDe: "Das ist meine Familie.", wordKu: "خێزان", sentenceKu: "ئەڤە خێزانا منە." },
-    { wordDe: "Das Haus Häuser", sentenceDe: "Wir wohnen in einem Haus.", wordKu: "خانی", sentenceKu: "ئەم ل خانووەکێ دژین." },
-    { wordDe: "Die Frau Frauen", sentenceDe: "Das ist meine Frau Sarah.", wordKu: "ژن / هەوسەر", sentenceKu: "ئەڤە ژنا من سارایە." },
-    { wordDe: "Das Kind Kinder", sentenceDe: "Wir haben zwei Kinder.", wordKu: "زارۆک", sentenceKu: "دو زارۆکێن مە هەنە." },
-    { wordDe: "Der Sohn Söhne", sentenceDe: "Unser Sohn heißt Leon.", wordKu: "کوڕ", sentenceKu: "ناڤێ کوڕێ مە لەونە." },
-    { wordDe: "Die Tochter Töchter", sentenceDe: "Unsere Tochter heißt Mia.", wordKu: "کچ", sentenceKu: "ناڤێ کچا مە میایە." },
-    { wordDe: "Das Zimmer Zimmer", sentenceDe: "Unser Haus hat vier Zimmer.", wordKu: "ژوور", sentenceKu: "خانیێ مە چار ژوور هەنە." },
-    { wordDe: "Die Küche Küchen", sentenceDe: "In der Küche kocht Sarah.", wordKu: "چێشتخانە", sentenceKu: "سارا ل چێشتخانێ دێ پێتڤیان دروست کەت." },
-    { wordDe: "Das Bad Bäder", sentenceDe: "Das Haus hat ein Bad.", wordKu: "دەستشۆر / حمام", sentenceKu: "خانی دەستشۆرەک هەیە." },
-    { wordDe: "Der Garten Gärten", sentenceDe: "Im Garten spielen die Kinder.", wordKu: "باغچە", sentenceKu: "زارۆک ل باغچەیی یارییان دکەن." },
-    { wordDe: "Die Katze Katzen", sentenceDe: "Wir haben auch eine Katze.", wordKu: "پشیلە", sentenceKu: "پشیلەک ژی یا مە هەیە." }
+    { wordDe: "Die Halsschmerzen", sentenceDe: "Sie hat starke Halsschmerzen.", wordKu: "ئێشا گەرووی", sentenceKu: "ئێشەکا مەزن د گەرووی دا هەیە." },
+    { wordDe: "Die Praxis Praxen", sentenceDe: "Sie ruft in der Praxis an.", wordKu: "نۆبەردارگەهـ / پزیشکخانە", sentenceKu: "ئەو تەلەفۆن بۆ پزیشکخانەیێ دکەت." },
+    { wordDe: "Untersuchen", sentenceDe: "Der Arzt untersucht sie.", wordKu: "پشکنین کرن", sentenceKu: "پزیشک پشکنینێ بۆ دکەت." },
+    { wordDe: "Das Rezept Rezepte", sentenceDe: "Der Arzt schreibt ein Rezept.", wordKu: "کاغەزا دەرمانان / رەسێت", sentenceKu: "پزیشک کاغەزا دەرمانان نڤیسیت." },
+    { wordDe: "Das Medikament Medikamente", sentenceDe: "Sie holt die Medikamente ab.", wordKu: "دەرمان", sentenceKu: "ئەو دەرمانان دئینیت." }
   ],
   quiz: [
-    { questionDe: "Was bedeutet 'Die Familie'?", questionKu: "رامانا 'Die Familie' چییە؟", options: ["خێزان", "خانی", "باغچە", "ژوور"], correctAnswer: 0 },
-    { questionDe: "Wie sagt man 'خانی' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'خانی' ب ئەلمانی؟", options: ["Das Haus", "Das Zimmer", "Die Küche", "Das Bad"], correctAnswer: 0 },
-    { questionDe: "Was bedeutet 'Der Sohn'?", questionKu: "رامانا 'Der Sohn' چییە؟", options: ["کچ", "کوڕ", "زارۆک", "برا"], correctAnswer: 1 },
-    { questionDe: "Wie sagt man 'کچ' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'کچ' ب ئەلمانی؟", options: ["Der Sohn", "Die Tochter", "Die Frau", "Die Mutter"], correctAnswer: 1 },
-    { questionDe: "Was bedeutet 'Die Küche'?", questionKu: "رامانا 'Die Küche' چییە؟", options: ["چێشتخانە", "ژوورا نیشتەجێبوونێ", "باغچە", "دەستشۆر"], correctAnswer: 0 },
-    { questionDe: "Wie sagt man 'باغچە' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'باغچە' ب ئەلمانی؟", options: ["Der Garten", "Das Haus", "Das Bad", "Das Zimmer"], correctAnswer: 0 },
-    { questionDe: "Was bedeutet 'Die Katze'?", questionKu: "رامانا 'Die Katze' چییە؟", options: ["گورگ", "پشیلە", "کۆچک", "باڵندە"], correctAnswer: 1 }
+    { questionDe: "Was bedeutet 'Die Halsschmerzen'?", questionKu: "رامانا 'Die Halsschmerzen' چییە؟", options: ["ئێشا گەرووی", "سەرئێشە", "ئێشا دڵی", "تبا لەشی"], correctAnswer: 0 },
+    { questionDe: "Wie sagt man 'پشکنین کرن' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'پشکنین کرن' ب ئەلمانی؟", options: ["Untersuchen", "Bestellen", "Bezahlen", "Wohnen"], correctAnswer: 0 },
+    { questionDe: "Was bedeutet 'Das Medikament'?", questionKu: "رامانا 'Das Medikament' چییە؟", options: ["دەرمان", "پەرتووک", "تەلەفۆن", "نان"], correctAnswer: 0 }
   ]
 };
 
-export const a1ImRestaurantStory = {
-  id: "im-restaurant",
-  titleDe: "Im Restaurant",
-  titleKu: "ل رێستۆرانتێ",
-  level: "A1 (Anfänger)",
+export const a2ImBuroStory = {
+  id: "arbeitsleben-im-buero",
+  titleDe: "Ein Arbeitstag im Büro",
+  titleKu: "رۆژا کارکرنێ ل فەرمانگەهێ",
+  level: "A2 (Grundlegende Kenntnisse)",
   readTime: "4 min",
-  coverImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=1200",
+  coverImage: `${IMAGES_URL}/covers/arbeitsleben-im-buero.jpg`,
   segments: [
-    { de: "David geht in ein italienisches Restaurant.", ku: "داڤید دچیتە رێستۆرانتەکا ئیتالی." },
-    { de: "Der Kellner kommt und fragt: 'Guten Abend! Haben Sie einen Tisch reserviert?'", ku: "گارسۆن دهێت و پرسیار دکەت: 'ئێڤار باش! ئەرێ مێزەک بۆ تە هاتییە رزێرڤەکرن؟'" },
-    { de: "David sagt: 'Guten Abend. Nein, ich habe keinen Tisch reserviert. Für eine Person, bitte.'", ku: "داڤید دبێژیت: 'ئێڤار باش. نەخێر، من مێز رزێرڤە نەکریە. بۆ ئێک کەسی، کەرەم بکە.'" },
-    { de: "Der Kellner sagt: 'Kommen Sie, bitte. Hier ist ein kleiner Tisch.'", ku: "گارسۆن دبێژیت: 'کەرەم بکە وەرە. لێرە مێزەکە بچووک هەیە.'" },
-    { de: "David setzt sich und liest die Speisekarte.", ku: "داڤید دکەتە سەر کورسیێ و لیستا خارنان بخوینیت." },
-    { de: "Der Kellner kommt zurück und fragt: 'Was möchten Sie bestellen?'", ku: "گارسۆن ڤەدگەریت و پرسیار دکەت: 'تۆ دخوازی چ داخواز بکەی؟'" },
-    { de: "David sagt: 'Ich möchte bitte eine Pizza Salami und ein Glas Wasser.'", ku: "داڤید دبێژیت: 'ئەز دخوازم پیزایەکە سالامی و گڵاسەکا ئاڤێ بکارم.'" },
-    { de: "Der Kellner fragt: 'Möchten Sie auch einen Salat?'", ku: "گارسۆن پرسیار دکەت: 'ئەرێ تو دخوازی سالاتەکێ ژی؟'" },
-    { de: "David antwortet: 'Nein, danke. Nur die Pizza und das Wasser.'", ku: "داڤید بەرسڤێ ددەت: 'نەخێر، سوپاس. تنێ پیزا و ئاڤ.'" },
-    { de: "Nach zwanzig Minuten bringt der Kellner das Essen.", ku: "پشتی بیست خولەکان گارسۆن خارنێ دئینیت." },
-    { de: "David sagt: 'Vielen Dank! Es schmeckt sehr gut.'", ku: "داڤید دبێژیت: 'گەلەک سوپاس! گەلەک ب تامە.'" },
-    { de: "Am Ende zahlt David und sagt: 'Die Rechnung, bitte. Stimmt so!'", ku: "ل دوماهیێ داڤید پارەی ددەت و دبێژیت: 'هژمارا پارەی، کەرەم بکە. پاشماوە بۆ تە!'" }
+    { de: "Stefan arbeitet als Kaufmann in einer großen Firma in Frankfurt.", ku: "ستێفان وەکو بازرگانەک ل کۆمپانیەکا مەزن ل فرانکفۆرت کار دکەت." },
+    { de: "Jeden Morgen beginnt er um acht Uhr mit der Arbeit und liest zuerst seine E-Mails.", ku: "سبەیدا هەمی رۆژان دەمژمێر هەشت دەست ب کار دکەت و پێشیێ نامەیێن خۆ دبینیت." },
+    { de: "Um zehn Uhr hat er eine wichtige Besprechung mit seinem Chef und den Kollegen.", ku: "دەمژمێر دەهـ جڤاتەکا گرنگ دگەل سەروکێ خۆ و هەڤکاران هەیە." },
+    { de: "Während des Meetings besprechen sie neue Projekte und planen die nächsten Aufgaben.", ku: "د دەمێ جڤاتێ دا، ئەوان پرۆژێن نوی دانوستاندن کر و ئەرکێن بهێت پلان بۆ دانان." },
+    { de: "In der Mittagspause geht Stefan mit seiner Kollegin Anna in die Kantine, um etwas zu essen.", ku: "د دەمێ خوارنا نیڤرۆ دا، ستێفان دگەل هەڤالا خۆ ئانا دچیتە کانتینا کارگەهێ دا کو تشتەکێ بخۆریت." },
+    { de: "Nachmittags schreibt er Rechnungen und telefoniert mit Kunden.", ku: "ل نیڤرۆیێ ئەو فاکتورەیان ددەتە نڤیسین و تەلەفۆنێ دگەل مێهڤان یان مۆشتەریان دکەت." },
+    { de: "Um siebzehn Uhr schaltet er den Computer aus und fährt zufrieden nach Hause.", ku: "دەمژمێر پێنج ئێڤاری ئەو کۆمپیوتەری دکوژینیت و ب رازیبوون بەرەڤ مال دڤەگەریت." }
   ],
   vocabulary: [
-    { wordDe: "Das Restaurant Restaurants", sentenceDe: "David geht in ein Restaurant.", wordKu: "رێستۆرانت", sentenceKu: "داڤید دچیتە رێستۆرانتێ." },
-    { wordDe: "Der Kellner Kellner", sentenceDe: "Der Kellner kommt und fragt.", wordKu: "گارسۆن / خزمەتکار", sentenceKu: "گارسۆن دهێت و پرسیار دکەت." },
-    { wordDe: "Der Tisch Tische", sentenceDe: "Haben Sie einen Tisch reserviert?", wordKu: "مێز", sentenceKu: "ئەرێ مێزەک بۆ تە هاتییە رزێرڤەکرن؟" },
-    { wordDe: "Die Speisekarte Speisekarten", sentenceDe: "Er liest die Speisekarte.", wordKu: "لیستا خارنان", sentenceKu: "ئەو لیستا خارنان بخوینیت." },
-    { wordDe: "Bestellen", sentenceDe: "Was möchten Sie bestellen?", wordKu: "داخوازکرن (خارنێ)", sentenceKu: "تۆ دخوازی چ داخواز بکەی؟" },
-    { wordDe: "Die Pizza Pizzen", sentenceDe: "Ich möchte eine Pizza.", wordKu: "پیزا", sentenceKu: "ئەز دخوازم پیزایەکێ." },
-    { wordDe: "Das Wasser", sentenceDe: "Ein Glas Wasser, bitte.", wordKu: "ئاو", sentenceKu: "گڵاسەکا ئاڤێ، کەرەم بکە." },
-    { wordDe: "Der Salat Salate", sentenceDe: "Möchten Sie einen Salat?", wordKu: "سالات", sentenceKu: "ئەرێ تو دخوازی سالاتەکێ؟" },
-    { wordDe: "Die Rechnung Rechnungen", sentenceDe: "Die Rechnung, bitte.", wordKu: "هژمارا پارەی / فاکتورە", sentenceKu: "هژمارا پارەی، کەرەم بکە." }
+    { wordDe: "Die Firma Firmen", sentenceDe: "Er arbeitet in einer Firma.", wordKu: "کۆمپانیا / کارگەهـ", sentenceKu: "ئەو ل کۆمپانیەکێ کار دکەت." },
+    { wordDe: "Die Besprechung Besprechungen", sentenceDe: "Er hat eine Besprechung.", wordKu: "جڤات / دانوستاندن", sentenceKu: "ئەو جڤاتەکێ هەیە." },
+    { wordDe: "Der Kollege Kollegen", sentenceDe: "Er arbeitet mit Kollegen.", wordKu: "هەڤکار", sentenceKu: "ئەو دگەل هەڤکاران کار دکەت." },
+    { wordDe: "Die Mittagspause Mittagspausen", sentenceDe: "In der Mittagspause isst er.", wordKu: "دەمی خوارنا نیڤرۆ", sentenceKu: "د دەمێ نیڤرۆیدا ئەو خارنێ بخۆریت." },
+    { wordDe: "Der Kunde Kunden", sentenceDe: "Er telefoniert mit Kunden.", wordKu: "مۆشتەری / مێهڤان", sentenceKu: "ئەو تەلەفۆنێ دگەل مۆشتەریان دکەت." }
   ],
   quiz: [
-    { questionDe: "Was bedeutet 'Das Restaurant'?", questionKu: "رامانا 'Das Restaurant' چییە؟", options: ["رێستۆرانت", "خانی", "بازاڕ", "نەخۆشخانە"], correctAnswer: 0 },
-    { questionDe: "Wie sagt man 'گارسۆن' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'گارسۆن' ب ئەلمانی؟", options: ["Der Kellner", "Der Lehrer", "Der Arzt", "Der Herr"], correctAnswer: 0 },
-    { questionDe: "Was bedeutet 'Der Tisch'?", questionKu: "رامانا 'Der Tisch' چییە؟", options: ["کورسی", "مێز", "چانتە", "خانی"], correctAnswer: 1 },
-    { questionDe: "Wie sagt man 'لیستا خارنان' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'لیستا خارنان' ب ئەلمانی؟", options: ["Die Speisekarte", "Die Tasche", "Die Zeitung", "Die Rechnung"], correctAnswer: 0 },
-    { questionDe: "Was bedeutet 'Die Rechnung'?", questionKu: "رامانا 'Die Rechnung' چییە؟", options: ["هژمارا پارەی / فاکتورە", "تەلەفۆن", "ناسنامە", "پاسپۆرت"], correctAnswer: 0 }
+    { questionDe: "Was bedeutet 'Die Firma'?", questionKu: "رامانا 'Die Firma' چییە؟", options: ["کۆمپانیا", "مال", "نەخۆشخانە", "سوپرمارکێت"], correctAnswer: 0 },
+    { questionDe: "Wie sagt man 'هەڤکار' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'هەڤکار' ب ئەلمانی؟", options: ["Der Kollege", "Der Arzt", "Der Kellner", "Der Vermieter"], correctAnswer: 0 },
+    { questionDe: "Was bedeutet 'Die Mittagspause'?", questionKu: "رامانا 'Die Mittagspause' چییە؟", options: ["دەمی خوارنا نیڤرۆ", "ژوورا ڤەواندنێ", "داویا هەفتیێ", "دەمێ ڤالا"], correctAnswer: 0 }
   ]
 };
 
-export const a1FreizeitUndHobbysStory = {
-  id: "freizeit-und-hobbys",
-  titleDe: "Meine Freizeit und Hobbys",
-  titleKu: "دەمێ ڤالا و حەزێن من",
-  level: "A1 (Anfänger)",
+export const a2UrlaubUndReisenStory = {
+  id: "urlaub-am-meer",
+  titleDe: "Urlaub am Meer",
+  titleKu: "پشوولە ل سەر دەریاسی",
+  level: "A2 (Grundlegende Kenntnisse)",
   readTime: "4 min",
-  coverImage: "https://images.unsplash.com/photo-1517649763962-0c6232660102?auto=format&fit=crop&q=80&w=1200",
+  coverImage: `${IMAGES_URL}/covers/urlaub-am-meer.jpg`,
   segments: [
-    { de: "Am Wochenende hat Anna viel Freizeit.", ku: "ل داویا هەفتیێ ئانا دەمەکێ ڤالایێ یێ مەزن هەیە." },
-    { de: "Sie steht am Samstag spät auf, um neun Uhr.", ku: "ئەو رۆژا شەمبیێ ب درەنگی ژ خەو ڕادبیت، دەمژمێر نەهـ." },
-    { de: "Zuerst trinkt sie einen großen Kaffee auf dem Balkon.", ku: "پێشیێ قاوەکا مەزن ل سەر باڵکۆنی دخۆت." },
-    { de: "Ihr Hobby ist Sport. Sie geht gerne schwimmen.", ku: "حەزا وێ یا سەرەکی وەرزشە. ئەو حەز دکەت بچیتە مەلەڤانێ." },
-    { de: "Am Nachmittag trifft sie ihre Freundin Lisa im Park.", ku: "ل نیڤرۆیێ ئەو هەڤالا خۆ لیسا ل پارکێ دبینیت." },
-    { de: "Sie sprechen Deutsch und machen einen langen Spaziergang.", ku: "ئەو ب ئەلمانی قسە دکەن و پیاسەیەکا درێژ دکەن." },
-    { de: "Am Abend hört Anna gerne Musik oder liest ein Buch.", ku: "ل ئێڤاریێ ئانا حەز دکەت گوهـ ل گۆرانییان بگرێت یان پەرتووکەکێ بخوینیت." },
-    { de: "Manchmal sieht sie einen guten Film im Fernsehen.", ku: "هندەک جار فیلمەکێ باش ل تەلەفۆنی دبینیت." },
-    { de: "Am Sonntag bleibt sie zu Hause und kocht für ihre Familie.", ku: "رۆژا یەکشەمبیێ ل مال دمینیت و بۆ خێزانا خۆ خارنێ دروست دکەت." },
-    { de: "Sie liebt das Wochenende sehr.", ku: "ئەو گەلەک حەز ژ داویا هەفتیێ دکەت." }
+    { de: "Im Sommer sind Julia und Tobias für eine Woche nach Spanien gereist.", ku: "ل هاڤینێ جولیا و تۆبیاس بۆ هەفتیەکێ بۆ ئیسپانیا گەشت کر." },
+    { de: "Sie haben einen Flug gebucht und in einem schönen Hotel direkt am Strand gewohnt.", ku: "وان فڕۆکەیەک رزێرڤە کر و ل هۆتێلەکە جوان راست ل سەر دەریایی ژیان." },
+    { de: "Das Wetter war fantastisch: Die Sonne hat jeden Tag geschienen und es war sehr warm.", ku: "قەسلا سەقایی گەلەک یا باش بوو: خۆرێ هەمی رۆژان تیشک دا و گەلەک گەرم بوو." },
+    { de: "Jeden Morgen sind sie früh aufgestanden, um im Meer zu schwimmen.", ku: "سبەیدا هەمی رۆژان زوو ژ خەو رابوون دا ل دەریاسی مەلەڤانێ بکەن." },
+    { de: "Nachmittags haben sie Ausflüge gemacht und historische Sehenswürdigkeiten besichtigt.", ku: "ل نیڤرۆیێ وان گەشتێن بچووک کر و شوینوارێن مێژوویی پشکنین کر." },
+    { de: "Abends haben sie in traditionellen Restaurants lokale Spezialitäten probiert.", ku: "ل ئێڤاریێ وان ل رێستۆرانتێن نەریتەپەرست خارنێن خۆمالی تاقی کر." },
+    { de: "Der Urlaub war leider viel zu kurz, aber sie haben wunderbare Erinnerungen mitgebracht.", ku: "پشوولە مخابن گەلەک کورت بوو، لێ وان بیروەریێن مەزن دگەل خۆ ئینانە ڤە." }
   ],
   vocabulary: [
-    { wordDe: "Die Freizeit", sentenceDe: "Am Wochenende hat Anna viel Freizeit.", wordKu: "دەمێ ڤالا", sentenceKu: "ل داویا هەفتیێ ئانا دەمێ ڤالا هەیە." },
-    { wordDe: "Das Wochenende Wochenenden", sentenceDe: "Am Wochenende bleibt sie zu Hause.", wordKu: "داویا هەفتیێ", sentenceKu: "ل داویا هەفتیێ ئەو ل مال دمینیت." },
-    { wordDe: "Der Sport", sentenceDe: "Ihr Hobby ist Sport.", wordKu: "وەرزش", sentenceKu: "حەزا وێ وەرزشە." },
-    { wordDe: "Schwimmen", sentenceDe: "Sie geht gerne schwimmen.", wordKu: "مەلەڤانی", sentenceKu: "ئەو حەز دکەت بچیتە مەلەڤانێ." },
-    { wordDe: "Der Park Parks", sentenceDe: "Sie trifft Lisa im Park.", wordKu: "پارک / بستان", sentenceKu: "ئەو لیسا ل پارکێ دبینیت." },
-    { wordDe: "Die Musik", sentenceDe: "Sie hört gerne Musik.", wordKu: "مۆسیقا / گۆرانی", sentenceKu: "ئەو حەز دکەت گوهـ ل مۆسیقایێ بگرێت." },
-    { wordDe: "Das Buch Bücher", sentenceDe: "Sie liest ein Buch.", wordKu: "پەرتووک", sentenceKu: "ئەو پەرتووکەکێ بخوینیت." },
-    { wordDe: "Der Film Filme", sentenceDe: "Sie sieht einen Film.", wordKu: "فیلم", sentenceKu: "ئەو فیلمەکێ دبینیت." }
+    { wordDe: "Der Urlaub Urlaube", sentenceDe: "Sie machen Urlaub in Spanien.", wordKu: "پشوولە / گەشت", sentenceKu: "ئەو پشوولەیێ ل ئیسپانیا دکەن." },
+    { wordDe: "Das Hotel Hotels", sentenceDe: "Sie wohnen in einem Hotel.", wordKu: "هۆتێل / مێهڤانخانە", sentenceKu: "ئەو ل هۆتێلەکێ دژین." },
+    { wordDe: "Der Strand Strände", sentenceDe: "Das Hotel liegt am Strand.", wordKu: "کەنار / دەریابس", sentenceKu: "هۆتێل ل کەنارێ دژیت." },
+    { wordDe: "Die Sonne", sentenceDe: "Die Sonne scheint.", wordKu: "خۆر / ڕۆژ", sentenceKu: "خۆر تیشک ددەت." },
+    { wordDe: "Die Erinnerung Erinnerungen", sentenceDe: "Sie haben schöne Erinnerungen.", wordKu: "بیروەری", sentenceKu: "وان بیروەریێن جوان هەنە." }
   ],
   quiz: [
-    { questionDe: "Was bedeutet 'Die Freizeit'?", questionKu: "رامانا 'Die Freizeit' چییە؟", options: ["دەمێ ڤالا", "کار", "خانی", "بازاڕ"], correctAnswer: 0 },
-    { questionDe: "Wie sagt man 'داویا هەفتیێ' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'داویا هەفتیێ' ب ئەلمانی؟", options: ["Das Wochenende", "Der Tag", "Der Abend", "Der Morgen"], correctAnswer: 0 },
-    { questionDe: "Was bedeutet 'Der Sport'?", questionKu: "رامانا 'Der Sport' چییە؟", options: ["وەرزش", "مۆسیقا", "پەرتووک", "فیلم"], correctAnswer: 0 },
-    { questionDe: "Wie sagt man 'پەرتووک' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'پەرتووک' ب ئەلمانی؟", options: ["Das Buch", "Der Film", "Die Musik", "Der Park"], correctAnswer: 0 },
-    { questionDe: "Was bedeutet 'Die Musik'?", questionKu: "رامانا 'Die Musik' چییە؟", options: ["مۆسیقا / گۆرانی", "وەرزش", "مەلەڤانی", "پارک"], correctAnswer: 0 }
+    { questionDe: "Was bedeutet 'Der Urlaub'?", questionKu: "رامانا 'Der Urlaub' چییە؟", options: ["پشوولە / گەشت", "کار", "نەخۆشی", "خانی"], correctAnswer: 0 },
+    { questionDe: "Wie sagt man 'کەنار' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'کەنار' ب ئەلمانی؟", options: ["Der Strand", "Der Park", "Das Haus", "Das Zimmer"], correctAnswer: 0 },
+    { questionDe: "Was bedeutet 'Die Erinnerung'?", questionKu: "رامانا 'Die Erinnerung' چییە؟", options: ["بیروەری", "زانین", "گۆتار", "کۆمپانیا"], correctAnswer: 0 }
   ]
 };
 
-export const a1BeimArztStory = {
-  id: "beim-arzt",
-  titleDe: "Beim Arzt im Wartezimmer",
-  titleKu: "ل دەف پزیشکی ل ژوورا ڤەواندنا نەخۆشان",
-  level: "A1 (Anfänger)",
+export const a2KochenUndErnahrungStory = {
+  id: "kochen-mit-freunden",
+  titleDe: "Kochen mit Freunden",
+  titleKu: "چێشتکرن دگەل هەڤالان",
+  level: "A2 (Grundlegende Kenntnisse)",
   readTime: "4 min",
-  coverImage: "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&q=80&w=1200",
+  coverImage: `${IMAGES_URL}/covers/kochen-mit-freunden.jpg`,
   segments: [
-    { de: "Michael fühlt sich heute nicht gut. Er hat Kopfschmerzen und Fieber.", ku: "مایکڵ ئەڤرۆ هەست ب باشیێ ناکەت. سەرێ وی دێشیت و تبا وی هەیە." },
-    { de: "Er geht zum Arzt und kommt in die Praxis.", ku: "ئەو دچیتە دەف پزیشکی و دچیتە نۆبەردارگەهێ (پزیشکخانێ)." },
-    { de: "Die Arzthelferin fragt am Empfang: 'Haben Sie einen Termin?'", ku: "کچە هاریکارا پزیشکی ل پێشوازیێ پرسیار دکەت: 'ئەرێ تە نۆبە هەیە؟'" },
-    { de: "Michael sagt: 'Nein, ich habe keinen Termin, aber es ist dringend. Ich bin krank.'", ku: "مایکڵ دبێژیت: 'نەخێر، نۆبە ل دەف من نینە، لێ پێتڤیە. ئەز یێ نەخۆشم.'" },
-    { de: "Die Arzthelferin sagt: 'Bitte setzen Sie sich ins Wartezimmer. Sie müssen ein bisschen warten.'", ku: "کچە هاریکار دبێژیت: 'کەرەم بکە ل ژوورا ڤەواندنێ رۆنە خوارێ. پێویستە تو هندەکێ لبەر خۆ بگری.'" },
-    { de: "Nach einer halben Stunde ruft der Arzt: 'Herr Weber, bitte kommen Sie rein!'", ku: "پشتی نیڤ دەمژمێرەکێ پزیشک بانگ دکەت: 'بەرێز ڤێبەر، کەرەم بکە ژوورڤە وەرە!'" },
-    { de: "Der Arzt fragt: 'Was tut Ihnen weh? Was sind Ihre Symptome?'", ku: "پزیشک پرسیار دکەت: 'چ تشتێ تە دێشیت؟ نیشانێن تە چەنە؟'" },
-    { de: "Michael sagt: 'Mein Kopf tut weh und ich habe Husten.'", ku: "مایکڵ دبێژیت: 'سەرێ من دێشیت و کۆکە ژی یا هەی.'" },
-    { de: "Der Arzt untersucht ihn und sagt: 'Sie haben eine Erkältung. Sie müssen zu Hause bleiben.'", ku: "پزیشک پشکنینا وی دکەت و دبێژیت: 'تۆ تووشی سرما بووی. پێویستە تو ل مال بمینی.'" },
-    { de: "Er schreibt ein Rezept für die Apotheke und sagt: 'Gute Besserung!'", ku: "ئەو کاغەزەکا دەرمانان بۆ دەرمانخانەیێ دڤەگۆهێزیت و دبێژیت: 'هیڤیا شفایێ بۆ تەیە!'" },
-    { de: "Michael bedankt sich und geht in die Apotheke.", ku: "مایکڵ سوپاسیا وی دکەت و دچیتە دەرمانخانەیێ." }
+    { de: "Am Freitagabend haben Freunde bei Michael zu Abend gegessen.", ku: "ل ئێڤارا شەمبیێ هەڤالان ل دەف مایکڵ خارنا ئێڤاری خار." },
+    { de: "Michael hat vorgeschlagen, dass sie gemeinsam ein mediterranes Gericht kochen.", ku: "مایکڵ پێشنیار کر کو ئەو پێکڤە خارنەکا مەدیتەرانی دروست بکەن." },
+    { de: "Zuerst sind sie gemeinsam in den Supermarkt gegangen, um frische Zutaten einzukaufen.", ku: "پێشیێ ئەو پێکڤە چوونە سووپر مارکێتێ دا کو پێکهاتێن نوی بکڕن." },
+    { de: "Sie haben Gemüse, Tomaten, Olivenöl und Nudeln in den Einkaufswagen gelegt.", ku: "وان سەوزاتی، تەماتە، روونێ زەیتوونێ و مەکەرۆنی ئێخستنە د تڕۆلیێ دا." },
+    { de: "In der Küche hat jeder eine Aufgabe übernommen: Michael hat die Nudeln gekocht und Lisa hat den Salat vorbereitet.", ku: "ل چێشتخانەیێ هەر ئێک ئەرەک گرتە خۆ: مایکڵ مەکەرۆنی کولان و لیسای سالات ئامادە کر." },
+    { de: "Das Essen hat wunderbar geschmeckt und alle waren sehr zufrieden.", ku: "خارن ب شێوەیەکێ مەزن ب تام بوو و هەمیان گەلەک حەز ژێ کر." },
+    { de: "Zum Nachtisch gab es frische Erdbeeren mit Sahne.", ku: "بۆ شرینیێ، چیلکێن نوی دگەل قیماغی هەنە." }
   ],
   vocabulary: [
-    { wordDe: "Der Arzt Ärzte", sentenceDe: "Er geht zum Arzt.", wordKu: "پزیشک / دکتۆر", sentenceKu: "ئەو دچیتە دەف پزیشکی." },
-    { wordDe: "Der Kopfschmerz Kopfschmerzen", sentenceDe: "Er hat Kopfschmerzen.", wordKu: "سەرئێشە", sentenceKu: "سەرێ وی دێشیت." },
-    { wordDe: "Das Fieber", sentenceDe: "Er hat Fieber.", wordKu: "تبا لەشی / تایێ", sentenceKu: "تبا وی هەیە." },
-    { wordDe: "Der Termin Termine", sentenceDe: "Haben Sie einen Termin?", wordKu: "نۆبە / دەمێ دەستنیشانکری", sentenceKu: "ئەرێ نۆبە ل دەف تە هەیە؟" },
-    { wordDe: "Krank", sentenceDe: "Ich bin krank.", wordKu: "نەخۆش", sentenceKu: "ئەز یێ نەخۆشم." },
-    { wordDe: "Das Wartezimmer Wartezimmer", sentenceDe: "Setzen Sie sich ins Wartezimmer.", wordKu: "ژوورا ڤەواندنا نەخۆشان", sentenceKu: "کەرەم بکە ل ژوورا ڤەواندنێ رۆنە خوارێ." },
-    { wordDe: "Der Husten", sentenceDe: "Ich habe Husten.", wordKu: "کۆکە", sentenceKu: "کۆکە یا هەی." },
-    { wordDe: "Die Apotheke Apotheken", sentenceDe: "Er geht in die Apotheke.", wordKu: "دەرمانخانە", sentenceKu: "ئەو دچیتە دەرمانخانەیێ." }
+    { wordDe: "Die Zutat Zutaten", sentenceDe: "Sie kaufen frische Zutaten.", wordKu: "پێکهاتە / مەواد", sentenceKu: "ئەو پێکهاتێن نوی دکڕن." },
+    { wordDe: "Gemeinsam", sentenceDe: "Sie kochen gemeinsam.", wordKu: "پێکڤە", sentenceKu: "ئەو پێکڤە خارنێ دروست دکەن." },
+    { wordDe: "Das Öl Öle", sentenceDe: "Er kauft Olivenöl.", wordKu: "روون", sentenceKu: "ئەو روونێ زەیتوونێ دکڕیت." },
+    { wordDe: "Der Nachtisch", sentenceDe: "Es gibt Erdbeeren zum Nachtisch.", wordKu: "شرینی پشت خارنێ", sentenceKu: "چیلک بۆ شرینیێ هەنە." },
+    { wordDe: "Schmecken", sentenceDe: "Das Essen hat geschmeckt.", wordKu: "تام دان", sentenceKu: "خارنێ تامەکا خۆش هەبوو." }
   ],
   quiz: [
-    { questionDe: "Was bedeutet 'Der Arzt'?", questionKu: "رامانا 'Der Arzt' چییە؟", options: ["پزیشک / دکتۆر", "مامۆستا", "گارسۆن", "فڕۆشیار"], correctAnswer: 0 },
-    { questionDe: "Wie sagt man 'سەرئێشە' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'سەرئێشە' ب ئەلمانی؟", options: ["Der Kopfschmerz", "Das Fieber", "Der Husten", "Der Termin"], correctAnswer: 0 },
-    { questionDe: "Was bedeutet 'Krank'?", questionKu: "رامانا 'Krank' چییە؟", options: ["نەخۆش", "ساخ", "بخێر", "جوان"], correctAnswer: 0 },
-    { questionDe: "Wie sagt man 'دەرمانخانە' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'دەرمانخانە' ب ئەلمانی؟", options: ["Die Apotheke", "Das Krankenhaus", "Die Schule", "Der Supermarkt"], correctAnswer: 0 },
-    { questionDe: "Was bedeutet 'Das Fieber'?", questionKu: "رامانا 'Das Fieber' چییە؟", options: ["تبا لەشی / تایێ", "سەرئێشە", "کۆکە", "نۆبە"], correctAnswer: 0 }
+    { questionDe: "Was bedeutet 'Gemeinsam'?", questionKu: "رامانا 'Gemeinsam' چییە؟", options: ["پێکڤە", "تەنێ", "ژ دەرڤە", "ل پاش"], correctAnswer: 0 },
+    { questionDe: "Wie sagt man 'پێکهاتە' auf Deutsch?", questionKu: "تۆ چەوا دبێژی 'پێکهاتە' ب ئەلمانی؟", options: ["Die Zutat", "Die Tasche", "Die Rechnung", "Das Buch"], correctAnswer: 0 },
+    { questionDe: "Was bedeutet 'Der Nachtisch'?", questionKu: "رامانا 'Der Nachtisch' چییە؟", options: ["شرینی پشت خارنێ", "خارنا سەرەکی", "نانی سپێدە", "تشتەکێ ترش"], correctAnswer: 0 }
   ]
 };

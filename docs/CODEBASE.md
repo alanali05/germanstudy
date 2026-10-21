@@ -70,7 +70,7 @@ germanstudy/
 ├── .env.local                 # VITE_FIREBASE_* + R2_* (git-ignored)
 ├── api/uploads/sign.js        # the only Vercel function: presigned R2 upload URLs
 ├── docs/                      # CLAUDE.md, CODEBASE.md
-├── public/                    # favicon.svg, icons.svg, images/hallo.png (seed story cover)
+├── public/                    # favicon.svg, icons.svg, images/hallo.png (old local cover, unused)
 └── src/
     ├── main.jsx               # provider tree + router
     ├── App.jsx                # renders <AppRoutes/>
@@ -232,7 +232,7 @@ startContentSync()            (called by ProtectedRoute when user.uid is set; re
     → notify useContent() subscribers (AppRoutes re-renders everything)
 stop() (logout) → listeners closed, state reset to empty / not ready
 ```
-`builtIn()` is now **only a seed**. It never loads automatically. The owner applies it from the Dashboard ("Eingebauten Inhalt laden" when the database is empty, or "Auf Standard zurücksetzen"), both of which replace everything, or with "Neue eingebaute Inhalte hinzufügen" (`addMissingBuiltIn()`), which only adds built-in items whose id is missing from Firestore. Built-in stories: 2 in `storydata.js`, 5 in `moreSroryData.js`, all in A1.
+`builtIn()` is now **only a seed**. It never loads automatically. The owner applies it from the Dashboard ("Eingebauten Inhalt laden" when the database is empty, or "Auf Standard zurücksetzen"), both of which replace everything, or with "Neue eingebaute Inhalte hinzufügen" (`addMissingBuiltIn()`), which only adds built-in items whose id is missing from Firestore. Built-in stories: 2 A1 in `storydata.js`, 5 A1 in `a1Stories.js`, 5 A2 in `moreSroryData.js`, 5 B1 in `b1Stories.js` (covers in R2).
 
 **API:**
 | Function | Purpose |
@@ -256,8 +256,9 @@ stop() (logout) → listeners closed, state reset to empty / not ready
 
 ### 7.3 Seed content — `data/storyFiles/storydata.js`
 Two v1-shape stories:
-- `a1GreetingsStory` (`ein-tag-mit-freunden`): greetings. The cover is `/images/hallo.png` from `public/`. It's kept there because cover URLs are saved in Firestore, and Vite's hashed `src/` asset URLs change with every build.
-- `a2PersoenlicheInformationenStory` (`persoenliche-informationen`): personal info at registration, Unsplash cover. Despite the name, it is placed in **a1**.
+- `a1GreetingsStory` (`ein-tag-mit-freunden`): greetings. Its cover is `covers/ein-tag-mit-freunden.png` in R2 (the old local copy is `public/images/hallo.png`, no longer used).
+- `a2PersoenlicheInformationenStory` (`persoenliche-informationen`): personal info at registration, cover in R2. Despite the name, it is placed in **a1**.
+- All built-in covers are in R2 at `${IMAGES_URL}/covers/<story id>.jpg` (`IMAGES_URL` in `src/config.js`). The photos came from Unsplash.
 
 ### 7.4 Students — `data/students.js`
 - **Code accounts.**

@@ -11,7 +11,13 @@ import { db } from "../lib/firebase";
 import { a1GreetingsStory, a2PersoenlicheInformationenStory } from "./storyFiles/storydata";
 import {
   a1EinkaufenStory, a1FamilieUndWohnenStory, a1ImRestaurantStory, a1FreizeitUndHobbysStory, a1BeimArztStory,
+} from "./storyFiles/a1Stories";
+import {
+  a2WohnungssucheStory, a2BeimArztStory, a2ImBuroStory, a2UrlaubUndReisenStory, a2KochenUndErnahrungStory,
 } from "./storyFiles/moreSroryData";
+import {
+  b1VorstellungsgespraechStory, b1HeizungStory, b1ElternabendStory, b1MuelltrennungStory, b1ZugverspaetungStory,
+} from "./storyFiles/b1Stories";
 
 const COLS = ["stories", "wordTopics", "quizzes"];
 const LEGACY_KEYS = ["ls-content-v2", "ls-content-v1"]; // content saved in the browser before Firebase
@@ -50,8 +56,12 @@ export const builtIn = () => fromStoryMap({
     a1GreetingsStory, a2PersoenlicheInformationenStory,
     a1EinkaufenStory, a1FamilieUndWohnenStory, a1ImRestaurantStory, a1FreizeitUndHobbysStory, a1BeimArztStory,
   ],
-  a2: [],
-  b1: [],
+  a2: [
+    a2WohnungssucheStory, a2BeimArztStory, a2ImBuroStory, a2UrlaubUndReisenStory, a2KochenUndErnahrungStory,
+  ],
+  b1: [
+    b1VorstellungsgespraechStory, b1HeizungStory, b1ElternabendStory, b1MuelltrennungStory, b1ZugverspaetungStory,
+  ],
   b2: [],
 });
 
