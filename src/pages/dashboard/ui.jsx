@@ -1,0 +1,83 @@
+// Small building blocks shared by the dashboard sections
+import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { useBi } from "./bi";
+
+// Long texts / JSX in the app language
+export const Bi = ({ de, ku }) => useBi()(de, ku);
+
+export function Field({ label, hint, children }) {
+  return (
+    <label className="block text-sm font-semibold">
+      {label}
+      {hint && <span className="ms-2 font-normal text-faint">{hint}</span>}
+      {children}
+    </label>
+  );
+}
+
+// A card section; "id" makes it a jump target, "aside" sits next to the title (e.g. a button)
+export function Box({ id, title, aside, active, children }) {
+  return (
+    <section id={id} className="glass mb-6 scroll-mt-6 rounded-2xl p-4 sm:p-6" style={active ? { borderColor: "var(--brand)" } : undefined}>
+      {(title || aside) && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-bold">{title}</h2>
+          {aside}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+
+export function Row({ title, sub, badge, onEdit, onDelete }) {
+  const bi = useBi();
+  return (
+    <div className="flex items-center gap-2 border-b border-line py-3 last:border-b-0 sm:gap-3">
+      {badge}
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold" dir="auto">{title}</p>
+        {sub && <p className="truncate text-sm text-muted" dir="auto">{sub}</p>}
+      </div>
+      {onEdit && (
+        <button onClick={onEdit} className="btn-mini inline-flex items-center gap-1 text-sm" aria-label={`${bi("Bearbeiten", "دەستکاریکرن")} ${title}`}>
+          <Pencil size={15} /><span className="hidden md:inline">{bi("Bearbeiten", "دەستکاریکرن")}</span>
+        </button>
+      )}
+      {onDelete && (
+        <button onClick={onDelete} className="btn-danger inline-flex items-center gap-1 text-sm" aria-label={`${bi("Löschen", "سڕین")} ${title}`}>
+          <Trash2 size={15} /><span className="hidden md:inline">{bi("Löschen", "سڕین")}</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function Msg({ m }) {
+  const bi = useBi();
+  if (!m) return null;
+  return <p role="status" className="mt-3 text-sm font-medium" style={{ color: m.ok ? "var(--ok)" : "var(--bad)" }}>{m.text ?? bi(m.de, m.ku)}</p>;
+}
+
+export function SubmitRow({ editing, label, onCancel, busy }) {
+  const bi = useBi();
+  return (
+    <div className="mt-5 flex flex-wrap gap-3">
+      <button disabled={busy} className="btn-primary inline-flex items-center gap-2 px-6 py-3">
+        {editing ? <Pencil size={17} /> : <Plus size={18} />}
+        {editing ? bi("Änderungen speichern", "گوهۆڕینان بپارێزە") : label}
+      </button>
+      {editing && <button type="button" onClick={onCancel} className="btn-ghost px-5 py-3">{bi("Abbrechen", "هەلوەشاندن")}</button>}
+    </div>
+  );
+}
+
+export function SearchBox({ value, onChange }) {
+  const bi = useBi();
+  return (
+    <div className="relative">
+      <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-faint" />
+      <input className="field !mt-0 !ps-9" placeholder={bi("Suchen…", "گەڕیان…")} value={value} onChange={(e) => onChange(e.target.value)} aria-label={bi("Suchen", "گەڕیان")} />
+    </div>
+  );
+}

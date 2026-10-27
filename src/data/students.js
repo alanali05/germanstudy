@@ -64,19 +64,18 @@ let creatorAuth;
 const getCreatorAuth = () =>
   (creatorAuth ??= initializeAuth(initializeApp(firebaseConfig, "student-creator"), { persistence: inMemoryPersistence }));
 
-// Creates the login account + profile. Pass "code" to keep an existing code, otherwise a new one is made.
-// Returns the code.
-export async function createStudent({ name, className, level }, code) {
+// Creates the login account + profile with a new code. Returns the code.
+export async function createStudent({ name, className, level }) {
   const auth = getCreatorAuth();
   for (let tries = 0; tries < 5; tries++) {
-    const c = code || newCode(name);
+    const c = newCode(name);
     try {
       const cred = await createUserWithEmailAndPassword(auth, codeToEmail(c), c);
       await signOut(auth);
       await setDoc(doc(db, "students", cred.user.uid), { code: c, name, className, level });
       return c;
     } catch (err) {
-      if (err.code === "auth/email-already-in-use" && !code) continue; // code taken, try another
+      if (err.code === "auth/email-already-in-use") continue; // code taken, try another
       throw err;
     }
   }
@@ -90,13 +89,4 @@ export const updateStudent = (uid, data) => updateDoc(doc(db, "students", uid), 
 export async function deleteStudent(uid) {
   await deleteDoc(doc(db, "students", uid));
   await deleteDoc(doc(db, "avatars", uid));
-}
-
-/* ---------- students saved in this browser before Firebase ---------- */
-const LEGACY_KEY = "ls-students-v1";
-export function readLocalStudents() {
-  try { return JSON.parse(localStorage.getItem(LEGACY_KEY)) || []; } catch { return []; }
-}
-export function clearLocalStudents() {
-  try { localStorage.removeItem(LEGACY_KEY); } catch { /* ignore */ }
 }

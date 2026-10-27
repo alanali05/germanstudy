@@ -9,7 +9,7 @@ Guidance for Claude Code when working in this repository. For the full architect
 - **Stories** — German sentences with Kurdish translations, tap-a-word meanings, text-to-speech.
 - **Words** — vocabulary lists (German ↔ Kurdish with example sentences).
 - **Quiz** — multiple-choice question sets.
-- **Dashboard** (owner/teacher only) — CRUD for stories, word topics, quizzes, students, a home-page announcement, and JSON import/export.
+- **Dashboard** (owner/teacher only) — CRUD for stories, word topics, quizzes, students, and a home-page announcement.
 
 The backend is **Firebase**, used directly from the browser:
 - **Firebase Auth** (Email/Password) handles login codes.
@@ -26,9 +26,10 @@ npm run dev       # Vite dev server; also serves api/*.js (apiDev plugin in vite
 npm run build     # production build -> dist/
 npm run preview   # serve the build
 npm run lint      # ESLint (flat config)
+npm test          # Vitest unit tests (src/data/storyBundle.test.js)
 ```
 
-- There are no tests and no test runner.
+- Unit tests: Vitest, only for the pure story-bundle logic in `src/data/storyBundle.js`. The UI is checked manually.
 - `npm run lint` currently reports **4 known errors** (one `no-empty` in LangContext, and `react-refresh/only-export-components` in the three context files). Don't treat them as caused by your change. Fix them only if asked.
 - `npm run build` passes, with a warning about chunks over 500 kB caused by the Firebase SDK.
 - **Env vars** live in `.env.local` (git-ignored) and the same variables in Vercel. Never print the values.
@@ -55,9 +56,10 @@ npm run lint      # ESLint (flat config)
   - `t(key, vars)` interpolates `{name}`-style placeholders and falls back to `de`, then to the key.
   - `tn(key, n)` picks the `key.one` entry when `n === 1`.
 - **When adding UI text, add both `de` and `ku` to `dict`.** The Kurdish text should be checked by a native speaker; the file comment says so.
-- **Exception:** `src/pages/Dashboard.jsx` does not use `dict`. It writes both languages inline and shows **only the current app language** (the DE/KU switch):
-  - Every component calls `const bi = useBi();` and uses `bi("German", "Kurdish")`. `<Bi de={…} ku={…} />` does the same for JSX.
-  - Texts defined outside components (`OPT`, `tabs`, `CFG` texts, `toItem` errors) are `[de, ku]` pairs shown with `bi(...pair)`. Fixed messages are `{ ok, de, ku }` objects that `<Msg>` translates.
+- **Exception:** the dashboard (`src/pages/dashboard/`) does not use `dict`. It writes both languages inline and shows **only the current app language** (the DE/KU switch):
+  - Every component calls `const bi = useBi();` (from `dashboard/bi.js`) and uses `bi("German", "Kurdish")`. `<Bi de={…} ku={…} />` (from `dashboard/ui.jsx`) does the same for JSX.
+  - Texts defined outside components (`OPT`, `SECTIONS`, the editor's `ERROR_TEXT`) are `[de, ku]` pairs shown with `bi(...pair)`. Fixed messages are `{ ok, de, ku }` objects that `<Msg>` translates.
+  - Kurdish strings added with the 2026-10 redesign carry a `// KU: review` comment until a native speaker has checked them.
   - The page follows the app's `dir` (RTL in Kurdish). Inputs for German/Kurdish content keep their own `lang`/`dir`.
   - The Dashboard has **no English** by design.
 - Default language is `ku`. `LangContext` sets `<html lang dir>`, and `ku` makes the page **RTL**.
@@ -103,22 +105,15 @@ A **member** is the owner, or an account that has a `students/{uid}` document. D
 - `ProtectedRoute` starts and stops the sync when `user.uid` changes, and shows "Loading…" until the first snapshot (`ready`).
 - `useContent()` is a `useSyncExternalStore` hook. **`AppRoutes` calls it so every page re-renders when content changes.** That's why pages can keep using the plain getters.
 - Writes are owner-only and async:
-  - `saveItem(col, item)` does a full `setDoc`. `item.id` becomes the document id and is not stored. The item needs `level`; `order` defaults to `Date.now()`.
-  - `removeItem(col, id)` deletes one document.
+  - `saveBundle(bundle)` writes a story with its word list and quiz in one `writeBatch` (see `storyBundle.js`). `deleteBundle(storyId)` deletes all three.
   - `setAnnouncement(text)` saves the announcement; empty text deletes it.
-  - `replaceAllContent(v2)` deletes every document in the three collections, then writes new ones in batches of 450. Import, reset and migration use it.
-- To edit topic items, clone the topic, change its `words` or `questions` array, then `saveItem` the whole topic.
-- The **level is the `level` field** (lowercase id). The old display-only `level` text from the seed data is overwritten when content is written.
-- `builtIn()` converts the stories in `src/data/storyFiles/` (`storydata.js`: 2 A1 stories, `a1Stories.js`: 5 A1 stories, `moreSroryData.js`: 5 A2 stories, `b1Stories.js`: 5 B1 stories) from the v1 shape using `fromStoryMap`. It is **only a seed**. Editing these files changes nothing live until the owner uses one of the Dashboard buttons:
-  - Übersicht "Eingebauten Inhalt laden" (shown when the database is empty) and Sicherung → "Auf Standard zurücksetzen" replace **all** content.
-  - Sicherung → "Neue eingebaute Inhalte hinzufügen" (`addMissingBuiltIn()`) only writes built-in stories/topics/quizzes whose id isn't in Firestore yet. It deletes and overwrites nothing, so it's the safe way to publish new built-in stories. Edits to an already-added built-in story are **not** picked up by it.
-- To add a built-in story: export it from a file in `storyFiles/` in the v1 shape (`id, titleDe, titleKu, readTime, coverImage, segments, vocabulary, quiz`), import it in `stories.js`, and add it to the right level array in `builtIn()`. The `level` field inside the story object is ignored; the array it sits in decides the level. Its word topic and quiz get the story's `id` as their document id.
-- **Every story cover lives in the R2 bucket.** New or edited stories need a cover, and it can only be uploaded (Dashboard → Geschichten → "Bild hochladen"). There is no link field. Built-in stories use `${IMAGES_URL}/covers/<story id>.jpg` (`IMAGES_URL` in `src/config.js`, same value as `R2_PUBLIC_BASE_URL`; change both if the bucket gets a custom domain). Those files were uploaded once by hand. Sicherung → "Titelbilder in den Speicher verschieben" moves any cover in Firestore that is not under `IMAGES_URL`: built-in ids take the cover from the code, others are downloaded, shrunk and re-uploaded (the source must allow CORS; failures are counted and logged).
-- A new built-in story needs its cover uploaded to the bucket as `covers/<story id>.jpg` first (there is no upload script in the repo; use the Cloudflare dashboard or ask Claude). `public/images/hallo.png` is the old local copy of the first story's cover and is no longer referenced.
+- Content is edited as story bundles: `loadBundle` → edit → `validateBundle` → `saveBundle`. Don't write word topics or quizzes separately.
+- The **level is the `level` field** (lowercase id).
+- **Firestore is the single source of truth for content.** There are no story files, seed data or fallback copies in the code (the old `src/data/storyFiles/`, `builtIn()`, the "load built-in content" / backup buttons and the pre-Firebase localStorage migration were removed on purpose in 2026-10). New stories are created in the dashboard editor. Don't add content to the code. There is no in-app backup; use Firebase's own export tools if one is needed.
+- **Every story cover lives in the R2 bucket.** A story needs a cover, and it can only be uploaded (Dashboard → Geschichten → a story → Details → "Bild hochladen"). There is no link field. Firestore stores the full public URL (`R2_PUBLIC_BASE_URL/covers/…`). If the bucket gets a custom domain, existing stories keep their old URLs.
 - **Image uploads** (`src/services/upload.js`): `toJpeg(file, { size, square })` shrinks in the browser, then `uploadImage(kind, blob)` asks `/api/uploads/sign` for a presigned URL and PUTs the JPEG straight to R2. `kind` is `"avatar"` (any member, fixed key `avatars/{uid}.jpg`, ≤ 1 MB) or `"cover"` (owner only, `covers/<random>.jpg`, ≤ 3 MB). The signature includes `Content-Type: image/jpeg`, so nothing else can be uploaded with it.
 - Replaced or deleted covers stay in R2. Nothing cleans them up yet.
 - `storyId` links a word topic or quiz to a story. Linked words become tappable in `StoryReader`, and linked topics and quizzes appear as buttons under the story.
-- `readLocalContent()` / `clearLocalContent()` read and clear the old `ls-content-v2`/`v1` browser data. The Dashboard's one-time "Einrichtung" box offers to upload it.
 
 ## Auth
 
@@ -134,7 +129,6 @@ Login is **code only**. Google sign-in is deliberately not enabled; it may be ad
 - **Creating a student** (`createStudent` in `data/students.js`):
   - It uses a **second Firebase app** (`"student-creator"`, in-memory persistence) so the owner stays logged in.
   - It retries if the generated code (`NAME-1234`) is already taken.
-  - An existing code can be passed in; migration uses this.
 - **Deleting a student** removes their `students` and `avatars` documents, which revokes access. The Auth account itself can only be deleted in the console, because the client SDK can't delete other users.
 - Routes: `ProtectedRoute` redirects to `/login` when there's no user. `OwnerOnly` (inside `AppRoutes.jsx`) guards `/dashboard`.
 
@@ -147,20 +141,17 @@ The Firebase SDK keeps the login session in IndexedDB on its own. Our app's keys
 | `lang` | LangContext | `"ku"` / `"de"` |
 | `theme` | ThemeContext + index.html | `"dark"` / `"light"` |
 | `welcomed` (session) | Welcome.jsx | shows the welcome splash once per session |
-| `ls-content-v2`/`-v1`, `ls-students-v1` | data/stories.js, data/students.js | **legacy**, pre-Firebase data. Only read for the one-time migration. |
 
-Legacy keys that are no longer used: `auth`, `avatar:<code>`, `ls-announcement-v1`.
+Legacy keys from the pre-Firebase version that nothing reads any more: `ls-content-v2`/`-v1`, `ls-students-v1`, `auth`, `avatar:<code>`, `ls-announcement-v1`.
 
 Wrap storage access in `try/catch`, as the existing code does.
 
 ## Known quirks / tech debt (don't "fix" unless asked)
 
-- `a2PersoenlicheInformationenStory` is named "a2" but sits in the **a1** array in `builtIn()`, and its `level` says A1.
 - `index.html` loads the Inter and Roboto Google fonts, but the CSS actually uses Figtree and Noto Sans Arabic (imported in `index.css`).
 - `package.json` is named `"react"` and `README.md` is the unchanged Vite template.
 - Student codes (`NAME` + 4 digits) are short. Firebase Auth's rate limiting is the only brute-force protection.
 - Deleting a student leaves an unused Firebase Auth account behind.
-- `replaceAllContent` isn't atomic beyond 450 operations per batch.
 - `TopicCard` uses `text-white` on the accent-colored number badge, unlike the theme-token approach used elsewhere.
 - Speech uses the browser `speechSynthesis` API with `de-DE` (`src/utils/speak.js`, `SPEECH_LANG` in `src/config.js`).
 

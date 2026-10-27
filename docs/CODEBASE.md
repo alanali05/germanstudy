@@ -21,7 +21,7 @@ Access is enforced by `firestore.rules`. Image files live in **Cloudflare R2**. 
                  │         <App> → <AppRoutes>   useContent() → re-render on changes  │
                  │                                                                    │
                  │ Pages ──sync getters──▶ data/stories.js (live in-memory copy)      │
-                 │                            ▲ onSnapshot           │ saveItem etc.  │
+                 │                            ▲ onSnapshot           │ saveBundle etc.│
                  │ Dashboard ──writes─────────┼──────────────────────┘ (owner only)   │
                  │ Login ─▶ services/api.js ─▶ signInWithEmailAndPassword             │
                  │ Profile/Dashboard ─▶ services/upload.js (toJpeg → uploadImage)     │
@@ -70,7 +70,7 @@ germanstudy/
 ├── .env.local                 # VITE_FIREBASE_* + R2_* (git-ignored)
 ├── api/uploads/sign.js        # the only Vercel function: presigned R2 upload URLs
 ├── docs/                      # CLAUDE.md, CODEBASE.md
-├── public/                    # favicon.svg, icons.svg, images/hallo.png (old local cover, unused)
+├── public/                    # favicon.svg, icons.svg
 └── src/
     ├── main.jsx               # provider tree + router
     ├── App.jsx                # renders <AppRoutes/>
@@ -90,8 +90,8 @@ germanstudy/
     ├── utils/speak.js         # speak(text, onEnd), stopSpeaking()
     ├── data/
     │   ├── levels.js          # A1..B2 metadata + getLevel()
-    │   ├── stories.js         # CONTENT STORE: Firestore sync, getters, writes, seed, migration
-    │   ├── storyFiles/storydata.js  # built-in story seed data (v1 shape)
+    │   ├── stories.js         # CONTENT STORE: Firestore sync, getters, writes
+    │   ├── storyBundle.js     # pure: story + word list + quiz as one editable "bundle" (+ .test.js, Vitest)
     │   ├── students.js        # profiles, avatars, student accounts (create/update/delete)
     │   └── settings.js        # re-exports announcement get/set from stories.js
     ├── components/
@@ -111,7 +111,11 @@ germanstudy/
     │   ├── LangSwitch.jsx     # کوردی / Deutsch segmented toggle
     │   └── ThemeToggle.jsx    # sun/moon button
     └── pages/
-        ├── Login.jsx, Home.jsx, Profile.jsx, NotFound.jsx, Dashboard.jsx
+        ├── Login.jsx, Home.jsx, Profile.jsx, NotFound.jsx
+        ├── dashboard/  DashboardLayout.jsx, LibraryPage.jsx, LibraryCard.jsx, StudentsPage.jsx, SettingsPage.jsx,
+        │               bi.js (useBi + messages), ui.jsx (Field, Box, Row, Msg, SearchBox …)
+        │   └── editor/ StoryEditorPage.jsx, SectionTabs, DetailsSection, SentencesSection, BulkPaste,
+        │               WordsSection, QuizSection, SaveBar
         ├── stories/  StoriesLevels.jsx → StoriesList.jsx → StoryDetail.jsx
         ├── words/    WordsLevels.jsx   → WordsTopics.jsx → WordsList.jsx
         └── quiz/     QuizLevels.jsx    → QuizTopics.jsx  → QuizPlay.jsx
@@ -141,7 +145,10 @@ Defined in `src/routes/AppRoutes.jsx`:
 | `/login` | `Login` | public (redirects to `state.from` or `/` if already logged in) |
 | `/` | `Home` | Protected + Layout |
 | `/profile` | `Profile` | Protected + Layout |
-| `/dashboard` | `Dashboard` | Protected + Layout + `OwnerOnly` (`user.role === "owner"`) |
+| `/dashboard` | `DashboardLayout` → `LibraryPage` | Protected + Layout + `OwnerOnly` (`user.role === "owner"`) |
+| `/dashboard/stories/new`, `/dashboard/stories/:storyId` | `StoryEditorPage` | 〃 |
+| `/dashboard/students` | `StudentsPage` | 〃 |
+| `/dashboard/settings` | `SettingsPage` | 〃 |
 | `/stories` | `StoriesLevels` | Protected + Layout |
 | `/stories/:level` | `StoriesList` | 〃 |
 | `/stories/:level/:storyId` | `StoryDetail` | 〃 |
@@ -209,10 +216,11 @@ Level descriptions and names live in i18n (`level.a1`, `level.a1.desc`, …).
 
 ### 7.2 Content store — `data/stories.js`
 
-**v2 shape.** This is the in-memory copy, and also the format used for export and import:
+Firestore is the **single source of truth** for content. There are no story files or seed data in the code; stories are created in the dashboard editor.
+
+**Shape of the in-memory copy:**
 ```js
 {
-  version: 2,
   stories:    { a1: Story[],     a2, b1, b2 },
   wordTopics: { a1: WordTopic[], a2, b1, b2 },
   quizzes:    { a1: Quiz[],      a2, b1, b2 },
@@ -222,8 +230,6 @@ WordTopic = { id, titleDe, titleKu, storyId?, words: [{ wordDe, wordKu, sentence
 Quiz      = { id, titleDe, titleKu, storyId?, questions: [{ questionDe, questionKu, options: string[], correctAnswer: number }] }
 ```
 
-**v1 shape (legacy and seed format):** `{ a1: [StoryWithExtras], … }`, where each story also carries `vocabulary` (the words) and `quiz` (the questions). `fromStoryMap()` splits each v1 story into a Story, a WordTopic, and a Quiz that share the story's `id` and are linked through `storyId`.
-
 **Lifecycle:**
 ```
 startContentSync()            (called by ProtectedRoute when user.uid is set; returns stop())
@@ -232,7 +238,6 @@ startContentSync()            (called by ProtectedRoute when user.uid is set; re
     → notify useContent() subscribers (AppRoutes re-renders everything)
 stop() (logout) → listeners closed, state reset to empty / not ready
 ```
-`builtIn()` is now **only a seed**. It never loads automatically. The owner applies it from the Dashboard ("Eingebauten Inhalt laden" when the database is empty, or "Auf Standard zurücksetzen"), both of which replace everything, or with "Neue eingebaute Inhalte hinzufügen" (`addMissingBuiltIn()`), which only adds built-in items whose id is missing from Firestore. Built-in stories: 2 A1 in `storydata.js`, 5 A1 in `a1Stories.js`, 5 A2 in `moreSroryData.js`, 5 B1 in `b1Stories.js` (covers in R2).
 
 **API:**
 | Function | Purpose |
@@ -246,19 +251,12 @@ stop() (logout) → listeners closed, state reset to empty / not ready
 | `getAnnouncement()` | current announcement text |
 | `useContent()` | `useSyncExternalStore` hook that returns `{ content, announcement, ready }` |
 | `startContentSync()` | opens the listeners and returns the stop function |
-| `normalizeContent(d)` | validates and upgrades v1/v2 input (used by Import and migration) |
-| `builtIn()` | the seed content (v2) built from `storydata.js` |
-| `saveItem(col, item)` | `setDoc` of the whole item. `id` becomes the document id; `order` defaults to `Date.now()` |
-| `removeItem(col, id)` | `deleteDoc` |
+| `saveBundle(bundle)` | one `writeBatch` with the writes from `bundleToDocs` (story, word list, quiz; empty ones are deleted) |
+| `deleteBundle(storyId)` | one `writeBatch` deleting the story and every word topic / quiz with that `storyId` |
 | `setAnnouncement(text)` | sets `settings/announcement`, or deletes it when the text is empty |
-| `replaceAllContent(v2)` | deletes all content documents, then writes the new ones in batches of 450 |
-| `readLocalContent()`, `clearLocalContent()` | the old `ls-content-v2`/`v1` browser data, kept for one-time migration |
 
-### 7.3 Seed content — `data/storyFiles/storydata.js`
-Two v1-shape stories:
-- `a1GreetingsStory` (`ein-tag-mit-freunden`): greetings. Its cover is `covers/ein-tag-mit-freunden.png` in R2 (the old local copy is `public/images/hallo.png`, no longer used).
-- `a2PersoenlicheInformationenStory` (`persoenliche-informationen`): personal info at registration, cover in R2. Despite the name, it is placed in **a1**.
-- All built-in covers are in R2 at `${IMAGES_URL}/covers/<story id>.jpg` (`IMAGES_URL` in `src/config.js`). The photos came from Unsplash.
+### 7.3 Story bundles — `data/storyBundle.js`
+Pure functions (no Firebase) that the dashboard editor uses: `loadBundle`, `cleanBundle`, `validateBundle`, `bundleToDocs`, `storyHealth`, `moveItem`, `parsePaste`, `generateQuestions`, `slugId`. Unit-tested in `storyBundle.test.js` (`npm test`). Details: section 8, Dashboard.
 
 ### 7.4 Students — `data/students.js`
 - **Code accounts.**
@@ -267,13 +265,12 @@ Two v1-shape stories:
 - `loadProfile(fbUser)` reads `students/{uid}` and `avatars/{uid}`, and returns the profile with `role`, or `null` if the account isn't a member. On the owner's first login it creates the owner's `students` document.
 - `saveAvatar(uid, url|null)`: sets `avatars/{uid}` to `{ url }` or deletes it.
 - `useStudents()`: a live `onSnapshot` list of all students except the owner, sorted by name. Owner only.
-- `createStudent({name, className, level}, code?)`:
+- `createStudent({name, className, level})`:
   - Creates the Auth account through a **second Firebase app** (`"student-creator"`, `inMemoryPersistence`), so the owner's own session isn't replaced.
   - Then writes `students/{uid}`.
-  - Without a `code` it generates `FIRSTNAME-####` and retries if that code is taken. It returns the code.
+  - It generates `FIRSTNAME-####` and retries if that code is taken. It returns the code.
 - `updateStudent(uid, data)` updates the profile.
 - `deleteStudent(uid)` deletes `students/{uid}` and `avatars/{uid}`. The Auth account stays and can only be removed in the console.
-- `readLocalStudents()`, `clearLocalStudents()`: the old `ls-students-v1` browser data, kept for one-time migration.
 
 ### 7.5 Settings — `data/settings.js`
 - Re-exports `getAnnouncement` and `setAnnouncement` from `stories.js`. The announcement lives in `settings/announcement`, is synced with the content, and is shown on Home.
@@ -336,29 +333,25 @@ It returns nothing. `AuthContext`'s listener picks up the new session.
 - Upload an avatar: it is validated (image type, ≤ 8 MB), center-cropped to a 320×320 JPEG (`toJpeg`), uploaded to R2 as `avatars/{uid}.jpg` (`uploadImage`), and its link is saved to `avatars/{uid}` with `setAvatar`. Removing it deletes only the Firestore link; the file is overwritten by the next upload.
 - Shows the student code, level chip, and class. Has a logout button.
 
-### Dashboard (owner only) — `pages/Dashboard.jsx`
-One large file. All labels are written in German and Kurdish inline, but only the current app language is shown (`useBi()` → `bi(de, ku)`, `<Bi>`), and the page follows the app direction (RTL for Kurdish). Stat tiles at the top show counts of stories, words, questions, and students. Tabs:
+### Dashboard (owner only) — `pages/dashboard/`
+Design: `docs/superpowers/specs/2026-10-27-dashboard-library-editor-design.md`. All labels are written in German and Kurdish inline, but only the current app language is shown (`useBi()` → `bi(de, ku)`, `<Bi>`), and the page follows the app direction (RTL for Kurdish).
 
-| Tab | What it does |
+`DashboardLayout` shows a one-line summary (stories · words · questions · students) and a section switch. It passes `{ students, setDirty }` to the sections through the Outlet context.
+
+| Section | What it does |
 |---|---|
-| **Übersicht** (overview) | `SetupBox` (one-time; see below), quick-action buttons that switch tabs, a per-level content bar chart, and the announcement editor |
-| **Geschichten** (stories) | Add or edit a story. The story text uses **one sentence per line, `German \|\| Kurdish`**. Lists stories with search, edit, and delete. Changing the level changes the story's `level` field. A cover is **required** and can only be **uploaded** (shrunk to ≤ 1600 px JPEG, uploaded to R2 `covers/`, preview shown). There is no link field; older stories keep their existing link until a new picture is uploaded. |
-| **Wörter** (words) | Generic `TopicTab` with `CFG.words`. Pick an existing topic or "create new" (level, titles, optional story link), then add, edit, or delete words. Topic details (level, titles, `storyId`) can be edited separately. |
-| **Quiz** | The same `TopicTab` with `CFG.quiz`. Answers are entered one per line; the correct answer is a **1-based** number in the form and stored as a 0-based `correctAnswer`. |
-| **Schüler** (students) | The live list from `useStudents()`. Adding a student creates a Firebase account plus profile and shows the new `FIRSTNAME-####` code. Edit changes name, class, or level (the code stays the same). Delete revokes access. |
-| **Sicherung** (backup) | Export the content as `lingua-content.json`. Import JSON (validated through `normalizeContent`, accepts v1 or v2, asks for confirmation) or reset to the built-in content. Both import and reset use `replaceAllContent`, so they replace **everything for all students**. "Neue eingebaute Inhalte hinzufügen" adds only missing built-in stories/topics/quizzes and shows how many were added. |
+| **Geschichten** (`/dashboard`, `LibraryPage`) | Every story as a card (cover, level, German/Kurdish title) with chips for what is there or missing (sentences, sentences without Kurdish, words, quiz). Level filter chips with counts, title search, and a "Neue Geschichte" card. |
+| **Story editor** (`/dashboard/stories/:id`, `/new`) | The story, its word list and its quiz, as four tabs (only one section is shown at a time; all stay mounted, so a tab switch keeps unsaved input; the open tab is kept in the URL hash, e.g. `#quiz`): **Details** (cover upload, titles, level buttons, reading time), **Sätze** (one row per sentence, German and Kurdish inputs, move up/down, delete; "Viele Sätze einfügen" pairs a German box and a Kurdish box line by line, and also reads the old `Deutsch \|\| Kurdisch` lines), **Wörter** (word + meaning, example sentences behind "Beispiel"), **Quiz** (compact list; one question opens with answer rows and a radio button for the correct answer; "Fragen aus den Wörtern erstellen" adds "Was bedeutet …?" questions). The tab column stays in view while scrolling (a row above the content on phones), shows counts, and marks tabs that have validation errors; failed saves open the first tab with an error. A sticky save bar appears when something changed. "Geschichte löschen" (under Details) removes the story with its word list and quiz. |
+| **Schüler** (`StudentsPage`) | The live list from `useStudents()`. Adding a student creates a Firebase account plus profile and shows the new `FIRSTNAME-####` code. Edit changes name, class, or level (the code stays the same). Delete revokes access. |
+| **Einstellungen** (`SettingsPage`) | The announcement editor only. The former setup box (load built-in content, pre-Firebase migration) and **Sicherung** box (export/import, add missing built-in content, move covers, reset) were removed on purpose: Firestore is the only source of truth, and there is no in-app backup of content. |
 
-**SetupBox** appears only when it's needed:
-- If the database has no content, it offers "Eingebauten Inhalt laden" (`replaceAllContent(builtIn())`).
-- If the browser still has pre-Firebase data, it offers to upload `ls-content-*`, and to move `ls-students-v1` students. Moved students are created with their **existing codes**, and codes that are already taken are skipped.
+How the editor reads and writes (`data/storyBundle.js`, pure and unit-tested):
+- `loadBundle(content, storyId)` builds one object from the story plus its linked word topic and quiz. It prefers the doc whose id equals the story id, else the first with that `storyId`. Others are counted and left alone. Unknown story fields are kept in `extra`.
+- The form edits its own copy. Live Firestore updates don't overwrite it. Unsaved changes = JSON compare with the last saved copy. They trigger a `beforeunload` warning and a confirm on the dashboard's own links. The app uses `BrowserRouter`, so `useBlocker` isn't available and leaving through the main sidebar isn't caught.
+- `validateBundle` blocks saving without a German title, a cover, or a sentence with German text; with a word without meaning; or with a question without text, with fewer than 2 answers, or without a correct answer. Errors are listed at the top and link to their section.
+- `saveBundle` (in `stories.js`) writes everything in one `writeBatch`. Level and titles are copied to the word list and quiz. An empty word list or quiz deletes its document. Existing `order` values are kept, and new documents get `Date.now()`. New stories get their id from `slugId(titleDe)` (slug + 4 random chars), and the URL then changes to `/dashboard/stories/<id>`.
+- Covers are still required and can only be uploaded (shrunk to ≤ 1600 px JPEG, R2 `covers/`).
 
-Write pattern used throughout:
-- Build the full document. For topics, `clone(current)`, then change the `words` or `questions` array.
-- `await saveItem(col, doc)` or `removeItem(col, id)`, and show `SAVE_FAIL` if it fails.
-- There is no manual refresh. The `onSnapshot` listener updates the in-memory copy, and `AppRoutes` re-renders.
-- IDs come from `uid(title)` (a slug plus 4 random chars) and are used as Firestore document ids. Deletes ask for `window.confirm`.
-
-> Note: export and import cover **content only**. Students, avatars, and the announcement are not included.
 
 ---
 
@@ -402,7 +395,7 @@ Write pattern used throughout:
 | localStorage | `theme` | ThemeContext |
 | localStorage | `lang` | LangContext |
 | sessionStorage | `welcomed` | Welcome.jsx (cleared on logout) |
-| localStorage (legacy) | `ls-content-v2`/`v1`, `ls-students-v1` | no longer written. Read once for migration, then cleared. (`auth`, `avatar:*`, `ls-announcement-v1` are no longer used at all.) |
+| localStorage (legacy) | `ls-content-v2`/`v1`, `ls-students-v1` | pre-Firebase leftovers; nothing reads them any more (same for `auth`, `avatar:*`, `ls-announcement-v1`). |
 
 Owner edits are shared: every logged-in student sees them live.
 
@@ -415,9 +408,9 @@ Owner edits are shared: every logged-in student sees them live.
   2. For students, link it to an existing code account with `linkWithPopup` on the Profile page, so their `students/{uid}` document keeps working.
   3. For a teacher Google account, extend `isOwner()` in the rules and `OWNER_UID` in config (for example to a list).
 - **New Firestore collection**: add a `match` block to `firestore.rules` and ask the user to publish it. Without a rule, all access is denied.
-- **New content field**: just add it in the Dashboard form and in `saveItem`. Firestore is schemaless, and `ignoreUndefinedProperties` skips optional fields left empty.
+- **New content field**: add it to the bundle in `data/storyBundle.js` (`emptyBundle`, `loadBundle`, `cleanBundle`, `bundleToDocs`, plus tests) and to the matching editor section. Firestore is schemaless, and `ignoreUndefinedProperties` skips optional fields left empty.
 - **Progress tracking (future)**: for example `progress/{uid}/quizzes/{quizId}`, with a rule letting each user write their own documents.
-- **New level**: add it to `levels.js`, `LEVEL_IDS`/`empty()` in `stories.js`, the i18n `level.<id>` and `level.<id>.desc` keys, and check the Dashboard bar chart.
+- **New level**: add it to `levels.js`, `LEVEL_IDS`/`empty()` in `stories.js`, the i18n `level.<id>` and `level.<id>.desc` keys, and the dashboard level filter / level buttons (they read `levels.js`).
 - **New UI text**: add a `dict` entry with both `de` and `ku`.
 - **New built-in story**: see CLAUDE.md, "Data layer".
 
@@ -427,11 +420,10 @@ Owner edits are shared: every logged-in student sees them live.
 
 - ESLint reports 4 known errors (one empty `catch {}` in LangContext, and the fast-refresh rule on the three context files that export hooks).
 - The production bundle is about 870 kB (about 260 kB gzipped), mostly the Firebase SDK. Vite warns about chunk size.
-- Seed story naming and level mismatch (`a2Persoenliche…` lives in a1).
 - Unused Inter and Roboto fonts in `index.html`. `package.json` is named `"react"`. The README is the Vite template.
 - Student codes are short (`NAME` + 4 digits). Firebase Auth rate limiting is the only brute-force protection.
 - Deleting a student leaves an orphan Auth account, which has to be removed manually in the console.
-- `replaceAllContent` commits in batches of 450, so a failure partway through can leave content half-replaced. Re-run import or reset to fix it.
+- There is no in-app content backup (the export/import box was removed). Deleted or overwritten content can't be restored from the app.
 - Replaced or deleted story covers stay in R2 (no cleanup yet). Deleting a student leaves their avatar file in R2.
 - The r2.dev public URL is rate-limited by Cloudflare. Connect a custom domain to the bucket before traffic grows, then update `R2_PUBLIC_BASE_URL` (existing links keep the old domain).
 - `firestore.rules` must be published by hand, and the owner uid is duplicated between the rules and `src/config.js`.

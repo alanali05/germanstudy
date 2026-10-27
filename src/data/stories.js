@@ -1,4 +1,5 @@
-// Content store. Three Firestore collections, one document per item, each with a "level" field (a1, a2, b1, b2):
+// Content store. Firestore is the only source of truth for content (there is no seed or copy in the code).
+// Three Firestore collections, one document per item, each with a "level" field (a1, a2, b1, b2):
 //   stories     – texts to read
 //   wordTopics  – word lists   { titleDe, titleKu, storyId?, words: [...] }
 //   quizzes     – question sets { titleDe, titleKu, storyId?, questions: [...] }
@@ -6,64 +7,14 @@
 // "storyId" is optional: it links a topic/quiz to a story (its words become tappable there).
 // startContentSync() keeps a live in-memory copy (grouped by level, like before), so the getters below stay synchronous.
 import { useSyncExternalStore } from "react";
-import { collection, deleteDoc, doc, getDocs, onSnapshot, setDoc, writeBatch } from "firebase/firestore";
+import { collection, deleteDoc, doc, onSnapshot, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import { a1GreetingsStory, a2PersoenlicheInformationenStory } from "./storyFiles/storydata";
-import {
-  a1EinkaufenStory, a1FamilieUndWohnenStory, a1ImRestaurantStory, a1FreizeitUndHobbysStory, a1BeimArztStory,
-} from "./storyFiles/a1Stories";
-import {
-  a2WohnungssucheStory, a2BeimArztStory, a2ImBuroStory, a2UrlaubUndReisenStory, a2KochenUndErnahrungStory,
-} from "./storyFiles/moreSroryData";
-import {
-  b1VorstellungsgespraechStory, b1HeizungStory, b1ElternabendStory, b1MuelltrennungStory, b1ZugverspaetungStory,
-} from "./storyFiles/b1Stories";
+import { bundleToDocs } from "./storyBundle";
 
 const COLS = ["stories", "wordTopics", "quizzes"];
-const LEGACY_KEYS = ["ls-content-v2", "ls-content-v1"]; // content saved in the browser before Firebase
 const LEVEL_IDS = ["a1", "a2", "b1", "b2"];
 const empty = () => ({ a1: [], a2: [], b1: [], b2: [] });
-const emptyContent = () => ({ version: 2, stories: empty(), wordTopics: empty(), quizzes: empty() });
-
-// Old shape (v1): stories that carried their own vocabulary + quiz -> new shape
-function fromStoryMap(map) {
-  const c = emptyContent();
-  LEVEL_IDS.forEach((lv) => {
-    (map[lv] || []).forEach((s) => {
-      const { vocabulary, quiz, ...story } = s;
-      c.stories[lv].push(story);
-      if (vocabulary?.length) c.wordTopics[lv].push({ id: s.id, titleDe: s.titleDe, titleKu: s.titleKu || "", storyId: s.id, words: vocabulary });
-      if (quiz?.length) c.quizzes[lv].push({ id: s.id, titleDe: s.titleDe, titleKu: s.titleKu || "", storyId: s.id, questions: quiz });
-    });
-  });
-  return c;
-}
-
-// Accepts new or old shaped data (also used by the dashboard "Import")
-export function normalizeContent(d) {
-  if (!d || typeof d !== "object") throw new Error("bad data");
-  if (d.version === 2) {
-    return { version: 2, stories: { ...empty(), ...d.stories }, wordTopics: { ...empty(), ...d.wordTopics }, quizzes: { ...empty(), ...d.quizzes } };
-  }
-  if (LEVEL_IDS.every((l) => Array.isArray(d[l]))) return fromStoryMap(d);
-  throw new Error("bad data");
-}
-
-// Built-in stories: put new ones here (v1 shape, see storyFiles/*.js), then use
-// Dashboard -> Backup -> "add missing built-in content" to write them to Firestore
-export const builtIn = () => fromStoryMap({
-  a1: [
-    a1GreetingsStory, a2PersoenlicheInformationenStory,
-    a1EinkaufenStory, a1FamilieUndWohnenStory, a1ImRestaurantStory, a1FreizeitUndHobbysStory, a1BeimArztStory,
-  ],
-  a2: [
-    a2WohnungssucheStory, a2BeimArztStory, a2ImBuroStory, a2UrlaubUndReisenStory, a2KochenUndErnahrungStory,
-  ],
-  b1: [
-    b1VorstellungsgespraechStory, b1HeizungStory, b1ElternabendStory, b1MuelltrennungStory, b1ZugverspaetungStory,
-  ],
-  b2: [],
-});
+const emptyContent = () => ({ stories: empty(), wordTopics: empty(), quizzes: empty() });
 
 /* ---------- live copy of the database ---------- */
 const initial = { content: emptyContent(), announcement: "", ready: false };
@@ -144,66 +95,26 @@ export const linkedWordTopics = (storyId) =>
 export const getAnnouncement = () => state.announcement;
 
 /* ---------- write (owner only, enforced by firestore.rules) ---------- */
-// item needs "level" (a1..b2); its "id" becomes the document id
-export function saveItem(col, { id, ...data }) {
-  return setDoc(doc(db, col, id), { order: Date.now(), ...data });
+// One story with its word list and quiz (see storyBundle.js), written in a single batch
+export async function saveBundle(bundle) {
+  const { sets, deletes } = bundleToDocs(bundle, Date.now());
+  const batch = writeBatch(db);
+  sets.forEach(([col, id, data]) => batch.set(doc(db, col, id), data));
+  deletes.forEach(([col, id]) => batch.delete(doc(db, col, id)));
+  await batch.commit();
 }
-export const removeItem = (col, id) => deleteDoc(doc(db, col, id));
+
+// Deletes a story together with every word list and quiz linked to it
+export async function deleteBundle(storyId) {
+  const batch = writeBatch(db);
+  batch.delete(doc(db, "stories", storyId));
+  for (const col of ["wordTopics", "quizzes"]) {
+    LEVEL_IDS.forEach((l) => state.content[col][l].filter((x) => x.storyId === storyId).forEach((x) => batch.delete(doc(db, col, x.id))));
+  }
+  await batch.commit();
+}
 
 export function setAnnouncement(text) {
   const ref = doc(db, "settings", "announcement");
   return text.trim() ? setDoc(ref, { text: text.trim() }) : deleteDoc(ref);
-}
-
-// Deletes all stories, word topics and quizzes, then writes "c" (v2 shape). Used by import, reset and migration.
-export async function replaceAllContent(c) {
-  const ops = [];
-  for (const col of COLS) {
-    const snap = await getDocs(collection(db, col));
-    snap.docs.forEach((d) => ops.push((b) => b.delete(d.ref)));
-    LEVEL_IDS.forEach((level) =>
-      (c[col][level] || []).forEach(({ id, ...item }, order) =>
-        ops.push((b) => b.set(doc(db, col, id), { ...item, level, order }))
-      )
-    );
-  }
-  for (let i = 0; i < ops.length; i += 450) {
-    const batch = writeBatch(db);
-    ops.slice(i, i + 450).forEach((op) => op(batch));
-    await batch.commit();
-  }
-}
-
-// Writes only the built-in stories/topics/quizzes whose id is not in Firestore yet (nothing is deleted
-// or overwritten), after the existing ones. Returns how many documents were added.
-export async function addMissingBuiltIn() {
-  const c = builtIn();
-  const batch = writeBatch(db);
-  let added = 0;
-  for (const col of COLS) {
-    const have = new Set((await getDocs(collection(db, col))).docs.map((d) => d.id));
-    LEVEL_IDS.forEach((level) =>
-      c[col][level].forEach(({ id, ...item }) => {
-        if (have.has(id)) return;
-        batch.set(doc(db, col, id), { ...item, level, order: Date.now() + added });
-        added++;
-      })
-    );
-  }
-  if (added) await batch.commit();
-  return added;
-}
-
-/* ---------- content saved in this browser before Firebase ---------- */
-export function readLocalContent() {
-  for (const k of LEGACY_KEYS) {
-    try {
-      const raw = localStorage.getItem(k);
-      if (raw) return normalizeContent(JSON.parse(raw));
-    } catch { /* try next */ }
-  }
-  return null;
-}
-export function clearLocalContent() {
-  try { LEGACY_KEYS.forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
 }
