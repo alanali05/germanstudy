@@ -4,10 +4,10 @@ Guidance for Claude Code when working in this repository. For the full architect
 
 ## What this is
 
-**LinguaSchool** — a frontend-only React SPA for teaching **German to Kurdish (Badini dialect, Arabic script) speakers**. Students log in with a personal code and work through content grouped by CEFR level (A1, A2, B1, B2):
+**LinguaSchool** — a frontend-only React SPA for teaching **German or English to Kurdish (Badini dialect, Arabic script) speakers**. Each student has a **learning language** (`learnLang`: `de` | `en`), chosen by the teacher and changeable on the Profile page. Students log in with a personal code and work through the content of their learning language, grouped by CEFR level (A1, A2, B1, B2):
 
-- **Stories** — German sentences with Kurdish translations, tap-a-word meanings, text-to-speech.
-- **Words** — vocabulary lists (German ↔ Kurdish with example sentences).
+- **Stories** — sentences in the learning language with Kurdish translations, tap-a-word meanings, text-to-speech.
+- **Words** — vocabulary lists (German/English ↔ Kurdish with example sentences).
 - **Quiz** — multiple-choice question sets.
 - **Dashboard** (owner/teacher only) — CRUD for stories, word topics, quizzes, students, and a home-page announcement.
 
@@ -26,11 +26,11 @@ npm run dev       # Vite dev server; also serves api/*.js (apiDev plugin in vite
 npm run build     # production build -> dist/
 npm run preview   # serve the build
 npm run lint      # ESLint (flat config)
-npm test          # Vitest unit tests (src/data/storyBundle.test.js)
+npm test          # Vitest unit tests (src/data/*.test.js, src/i18n.test.js)
 ```
 
-- Unit tests: Vitest, only for the pure story-bundle logic in `src/data/storyBundle.js`. The UI is checked manually.
-- `npm run lint` currently reports **4 known errors** (one `no-empty` in LangContext, and `react-refresh/only-export-components` in the three context files). Don't treat them as caused by your change. Fix them only if asked.
+- Unit tests: Vitest, for the pure logic (`storyBundle.js`, `contentShape.js`) and the completeness of `i18n.js` (every key in de, ku and en with the same placeholders). The UI is checked manually.
+- `npm run lint` currently reports **3 known errors** (`react-refresh/only-export-components` in the three context files). Don't treat them as caused by your change. Fix them only if asked.
 - `npm run build` passes, with a warning about chunks over 500 kB caused by the Firebase SDK.
 - **Env vars** live in `.env.local` (git-ignored) and the same variables in Vercel. Never print the values.
   - `VITE_FIREBASE_*` (6): Firebase web config, inlined into the browser build.
@@ -51,23 +51,23 @@ npm test          # Vitest unit tests (src/data/storyBundle.test.js)
 
 ## Key conventions
 
-### Bilingual UI: German (`de`) and Kurdish (`ku`)
+### Interface languages: Kurdish (`ku`), German (`de`), English (`en`)
+- A student can switch between **Kurdish and their learning language**; the owner (and the login page) gets all three. `AuthContext` tells `LangContext` the allowed ones (`setAllowed(uiLangsFor(user))`, `data/languages.js`); if the saved choice isn't allowed any more, the learning language is used.
 - All student-facing UI text goes through `src/i18n.js` (`dict`) and `useLang()`:
   - `t(key, vars)` interpolates `{name}`-style placeholders and falls back to `de`, then to the key.
   - `tn(key, n)` picks the `key.one` entry when `n === 1`.
-- **When adding UI text, add both `de` and `ku` to `dict`.** The Kurdish text should be checked by a native speaker; the file comment says so.
-- **Exception:** the dashboard (`src/pages/dashboard/`) does not use `dict`. It writes both languages inline and shows **only the current app language** (the DE/KU switch):
-  - Every component calls `const bi = useBi();` (from `dashboard/bi.js`) and uses `bi("German", "Kurdish")`. `<Bi de={…} ku={…} />` (from `dashboard/ui.jsx`) does the same for JSX.
-  - Texts defined outside components (`OPT`, `SECTIONS`, the editor's `ERROR_TEXT`) are `[de, ku]` pairs shown with `bi(...pair)`. Fixed messages are `{ ok, de, ku }` objects that `<Msg>` translates.
+- **When adding UI text, add `de`, `ku` and `en` to `dict`** (`src/i18n.test.js` fails otherwise). The Kurdish text should be checked by a native speaker; the file comment says so.
+- **Exception:** the dashboard (`src/pages/dashboard/`) does not use `dict`. It writes all three languages inline and shows **only the current app language**:
+  - Every component calls `const tr = useTr();` (from `dashboard/bi.js`) and uses `tr("German", "Kurdish", "English")`. `<Tr de={…} ku={…} en={…} />` (from `dashboard/ui.jsx`) does the same for JSX.
+  - Texts defined outside components (`OPT`, `SECTIONS`, the editor's `ERROR_TEXT`) are `[de, ku, en]` triples shown with `tr(...triple)`. Labels that name the story's language use `byLang(lang, germanTriple, englishTriple)`. Fixed messages are `{ ok, de, ku, en }` objects that `<Msg>` translates.
   - Kurdish strings added with the 2026-10 redesign carry a `// KU: review` comment until a native speaker has checked them.
-  - The page follows the app's `dir` (RTL in Kurdish). Inputs for German/Kurdish content keep their own `lang`/`dir`.
-  - The Dashboard has **no English** by design.
+  - The page follows the app's `dir` (RTL in Kurdish). Inputs for learning-language/Kurdish content keep their own `lang`/`dir`.
 - Default language is `ku`. `LangContext` sets `<html lang dir>`, and `ku` makes the page **RTL**.
-- Content fields come in pairs: `titleDe`/`titleKu`, `wordDe`/`wordKu`, `sentenceDe`/`sentenceKu`, `questionDe`/`questionKu`, segment `{ de, ku }`.
+- Content fields come in pairs: `title`/`titleKu`, `word`/`wordKu`, `sentence`/`sentenceKu`, `question`/`questionKu`, segment `{ text, ku }` (learning language / Kurdish).
 
 ### RTL-safe styling
 - Use logical Tailwind utilities (`ms-`, `me-`, `ps-`, `pe-`, `start-`, `end-`, `border-s`, `text-start`) and `rtl:` variants (for example `rtl:rotate-180` on chevron and back icons). Don't use `ml-`/`mr-`/`left-`/`right-` for layout.
-- Set explicit `dir="ltr" lang="de"` on German text and `dir="rtl" lang="ku"` on Kurdish text, whatever the page direction is.
+- Set explicit `dir="ltr" lang={learning language}` on German/English text and `dir="rtl" lang="ku"` on Kurdish text, whatever the page direction is.
 
 ### Theming
 - Colors are CSS variables in `src/index.css`: `--bg --card --fg --muted --faint --line --soft --brand --on-brand --link --ok --okbg --bad --badbg --hl`. They are exposed to Tailwind as `text-fg`, `bg-card`, `border-line`, `bg-soft`, `bg-brand`, `text-on-brand`, `text-link`, `text-muted`, `text-faint`.
@@ -87,28 +87,30 @@ npm test          # Vitest unit tests (src/data/storyBundle.test.js)
 
 | Path | Shape | Read | Write |
 |---|---|---|---|
-| `stories/{id}` | `{ level: "a1", order, titleDe, titleKu, readTime?, coverImage?, segments[{de,ku}] }` | members | owner |
-| `wordTopics/{id}` | `{ level, order, titleDe, titleKu, storyId?, words[{wordDe,wordKu,sentenceDe,sentenceKu}] }` | members | owner |
-| `quizzes/{id}` | `{ level, order, titleDe, titleKu, storyId?, questions[{questionDe,questionKu,options[],correctAnswer}] }` | members | owner |
+| `stories/{id}` | `{ lang: "de", level: "a1", order, title, titleKu, readTime?, coverImage?, segments[{text,ku}] }` | members | owner |
+| `wordTopics/{id}` | `{ lang, level, order, title, titleKu, storyId?, words[{word,wordKu,sentence,sentenceKu}] }` | members | owner |
+| `quizzes/{id}` | `{ lang, level, order, title, titleKu, storyId?, questions[{question,questionKu,options[],correctAnswer}] }` | members | owner |
 | `settings/announcement` | `{ text }` | members | owner |
-| `students/{uid}` | `{ code, name, className, level: "A1" }` | owner, or the student themself | owner |
+| `students/{uid}` | `{ code, name, className, level: "A1", learnLang: "de" \| "en" }` (missing learnLang = German) | owner, or the student themself | owner; the student may change only their own `learnLang` |
 | `avatars/{uid}` | `{ url }` (link to `avatars/{uid}.jpg` in R2, with `?v=` for cache busting) | the user themself or owner | the user themself or owner |
 
 A **member** is the owner, or an account that has a `students/{uid}` document. Deleting that document cuts off the student's access.
 
+Field names are neutral: `title`, `segments[].text`, `word`, `sentence` and `question` hold the **learning language** (German or English, see `lang`); the `…Ku` fields hold Kurdish. Documents from before English (`titleDe`, `segments[].de`, `wordDe`, `questionDe`, no `lang`) are converted on load by `toNewShape` (`data/contentShape.js`), so both shapes work. All documents in Firestore were migrated on 2026-10-30 (and the English library imported then), so this fallback only matters for old exports.
+
 ### Content store: `src/data/stories.js`
-- `startContentSync()` opens `onSnapshot` listeners on the three collections plus the announcement. It rebuilds an in-memory copy in the **same v2 shape as before**, grouped by level and sorted by `order`:
+- `startContentSync()` opens `onSnapshot` listeners on the three collections plus the announcement. It normalizes every document (`toNewShape`) and rebuilds an in-memory copy grouped by **language, then level**, sorted by `order`:
   ```js
-  { version: 2, stories: { a1: [...], a2, b1, b2 }, wordTopics: {...}, quizzes: {...} }
+  { de: { stories: { a1: [...], a2, b1, b2 }, wordTopics: {...}, quizzes: {...} }, en: { ... } }
   ```
-  The getters (`getContent`, `storiesOf`, `findStory`, `wordTopicsOf`, `quizzesOf`, `linked*`, `getAnnouncement`) stay **synchronous**.
+- Student pages read through **`useLibrary()`** (`data/useLibrary.js`): the synchronous getters of `libraryOf(content, lang)` (`storiesOf`, `findStory`, `wordTopicsOf`, `quizzesOf`, `linked*`, `all`) for the user's learning language, plus `lang`. For the owner the library follows the language toggle (Deutsch → German, English → English, کوردی → their profile learning language), and `?lang=en|de` (the editor's "See it as a student" link) overrides that. The dashboard reads `useContent().content[lang]` directly.
 - `ProtectedRoute` starts and stops the sync when `user.uid` changes, and shows "Loading…" until the first snapshot (`ready`).
-- `useContent()` is a `useSyncExternalStore` hook. **`AppRoutes` calls it so every page re-renders when content changes.** That's why pages can keep using the plain getters.
+- `useContent()` is a `useSyncExternalStore` hook. **`AppRoutes` calls it so every page re-renders when content changes.**
 - Writes are owner-only and async:
   - `saveBundle(bundle)` writes a story with its word list and quiz in one `writeBatch` (see `storyBundle.js`). `deleteBundle(storyId)` deletes all three.
   - `setAnnouncement(text)` saves the announcement; empty text deletes it.
 - Content is edited as story bundles: `loadBundle` → edit → `validateBundle` → `saveBundle`. Don't write word topics or quizzes separately.
-- The **level is the `level` field** (lowercase id).
+- The **level is the `level` field** (lowercase id), the **library is the `lang` field** (`de` | `en`). A story's word list and quiz always have the story's `lang`; a story never changes language.
 - **Firestore is the single source of truth for content.** There are no story files, seed data or fallback copies in the code (the old `src/data/storyFiles/`, `builtIn()`, the "load built-in content" / backup buttons and the pre-Firebase localStorage migration were removed on purpose in 2026-10). New stories are created in the dashboard editor. Don't add content to the code. There is no in-app backup; use Firebase's own export tools if one is needed.
 - **Every story cover lives in the R2 bucket.** A story needs a cover, and it can only be uploaded (Dashboard → Geschichten → a story → Details → "Bild hochladen"). There is no link field. Firestore stores the full public URL (`R2_PUBLIC_BASE_URL/covers/…`). If the bucket gets a custom domain, existing stories keep their old URLs.
 - **Image uploads** (`src/services/upload.js`): `toJpeg(file, { size, square })` shrinks in the browser, then `uploadImage(kind, blob)` asks `/api/uploads/sign` for a presigned URL and PUTs the JPEG straight to R2. `kind` is `"avatar"` (any member, fixed key `avatars/{uid}.jpg`, ≤ 1 MB) or `"cover"` (owner only, `covers/<random>.jpg`, ≤ 3 MB). The signature includes `Content-Type: image/jpeg`, so nothing else can be uploaded with it.
@@ -123,7 +125,7 @@ Login is **code only**. Google sign-in is deliberately not enabled; it may be ad
   - Email = `<code lowercase>@linguaschool.app` (`codeToEmail`, `CODE_EMAIL_DOMAIN` in `src/config.js`).
   - Password = the code in UPPERCASE.
 - `loginWithCode(code)` in `src/services/api.js` signs in and maps errors to `INVALID_CODE`, `TOO_MANY` or `NETWORK`. It also rejects accounts whose `students` document was deleted.
-- `AuthContext` listens with `onAuthStateChanged`. It loads the profile with `loadProfile` (in `data/students.js`): the `students/{uid}` document, plus `role`, plus the avatar. Its value is `{ user, loading, logout, setAvatar }`. There is no `login()` function; Login just calls `loginWithCode`, and the listener sets `user`.
+- `AuthContext` listens with `onAuthStateChanged`. It loads the profile with `loadProfile` (in `data/students.js`): the `students/{uid}` document, plus `role`, plus the avatar. Its value is `{ user, loading, logout, askLogout, setAvatar, setLearnLang }` (`learnLangOf(user)` in `data/languages.js` gives the learning language). There is no `login()` function; Login just calls `loginWithCode`, and the listener sets `user`.
 - **Owner** = the Auth user `OWNER_UID`. It's in `src/config.js` **and** hard-coded in `firestore.rules`; **keep the two in sync**. `role` is computed from the uid and never stored. On the owner's first login, `loadProfile` creates the owner's `students` document.
 - The owner code is private. Only the user knows it. Never ask for it or write it anywhere.
 - **Creating a student** (`createStudent` in `data/students.js`):
@@ -138,7 +140,8 @@ The Firebase SDK keeps the login session in IndexedDB on its own. Our app's keys
 
 | Key | Owner | Contents |
 |---|---|---|
-| `lang` | LangContext | `"ku"` / `"de"` |
+| `lang` | LangContext | `"ku"` / `"de"` / `"en"` |
+| `dashLibrary` | DashboardLayout | `"de"` / `"en"`: which library the dashboard shows |
 | `theme` | ThemeContext + index.html | `"dark"` / `"light"` |
 | `welcomed` (session) | Welcome.jsx | shows the welcome splash once per session |
 
@@ -153,7 +156,7 @@ Wrap storage access in `try/catch`, as the existing code does.
 - Student codes (`NAME` + 4 digits) are short. Firebase Auth's rate limiting is the only brute-force protection.
 - Deleting a student leaves an unused Firebase Auth account behind.
 - `TopicCard` uses `text-white` on the accent-colored number badge, unlike the theme-token approach used elsewhere.
-- Speech uses the browser `speechSynthesis` API with `de-DE` (`src/utils/speak.js`, `SPEECH_LANG` in `src/config.js`).
+- Speech uses the browser `speechSynthesis` API, `speak(text, lang)` with the voice from `SPEECH_LANGS` in `src/config.js` (`de-DE`, `en-GB`).
 
 ## Code style
 

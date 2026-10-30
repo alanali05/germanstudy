@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Check, Loader2, Undo2, X } from "lucide-react";
-import { useBi } from "../bi";
+import { useTr } from "../bi";
 import { Msg } from "../ui";
 
 const FAB = "grid place-items-center rounded-full border border-line bg-card shadow-lg disabled:opacity-50";
@@ -8,7 +8,7 @@ const FAB = "grid place-items-center rounded-full border border-line bg-card sha
 // Save / undo / discard for the editor, shown while there is something to save or undo, or a save message.
 // Wide screens: a sticky bar at the bottom. Phones: round floating buttons above the tab bar (a bar would cover too much).
 export default function SaveBar({ dirty, busy, msg, canUndo, onSave, onUndo, onDiscard, onClearMsg }) {
-  const bi = useBi();
+  const tr = useTr();
 
   // "Saved ✓" goes away by itself; errors stay until the next change
   useEffect(() => {
@@ -18,9 +18,9 @@ export default function SaveBar({ dirty, busy, msg, canUndo, onSave, onUndo, onD
   }, [msg, onClearMsg]);
 
   if (!dirty && !msg && !canUndo) return null;
-  const saveLabel = busy ? bi("Speichert…", "دهێتە پاراستن…") : bi("Speichern", "بپارێزە"); // KU: review
-  const undoLabel = bi("Rückgängig", "زڤڕاندن"); // KU: review
-  const discardLabel = bi("Alle Änderungen verwerfen", "هەمی گوهۆڕینان ژێ ببە"); // KU: review
+  const saveLabel = busy ? tr("Speichert…", "دهێتە پاراستن…", "Saving…") : tr("Speichern", "بپارێزە", "Save"); // KU: review
+  const undoLabel = tr("Rückgängig", "زڤڕاندن", "Undo"); // KU: review
+  const discardLabel = tr("Alle Änderungen verwerfen", "هەمی گوهۆڕینان ژێ ببە", "Discard all changes"); // KU: review
 
   return (
     <>
@@ -28,7 +28,7 @@ export default function SaveBar({ dirty, busy, msg, canUndo, onSave, onUndo, onD
       <div className="glass sticky bottom-4 z-10 mt-2 hidden flex-wrap items-center gap-3 rounded-2xl p-3 lg:flex">
         <div className="me-auto text-sm font-semibold">
           {dirty && (
-            <p><span aria-hidden="true" style={{ color: "#f59e0b" }}>● </span>{bi("Nicht gespeicherte Änderungen", "گوهۆڕینێن نەپاراستی")}</p>
+            <p><span aria-hidden="true" style={{ color: "#f59e0b" }}>● </span>{tr("Nicht gespeicherte Änderungen", "گوهۆڕینێن نەپاراستی", "Unsaved changes")}</p>
           )}{/* KU: review */}
           <Msg m={msg} />
         </div>
@@ -39,7 +39,7 @@ export default function SaveBar({ dirty, busy, msg, canUndo, onSave, onUndo, onD
         )}
         {dirty && (
           <>
-            <button type="button" onClick={onDiscard} disabled={busy} className="btn-ghost px-5">{bi("Verwerfen", "ژێ ببە")}</button>{/* KU: review */}
+            <button type="button" onClick={onDiscard} disabled={busy} className="btn-ghost px-5">{tr("Verwerfen", "ژێ ببە", "Discard")}</button>{/* KU: review */}
             <button type="button" onClick={onSave} disabled={busy} className="btn-primary px-6">{saveLabel}</button>
           </>
         )}

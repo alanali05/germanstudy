@@ -3,12 +3,13 @@ import TopicCard from "../../components/TopicCard";
 import PageHeader from "../../components/PageHeader";
 import { useLang } from "../../context/LangContext";
 import { getLevel } from "../../data/levels";
-import { quizzesOf } from "../../data/stories";
+import { useLibrary } from "../../data/useLibrary";
 import EmptyState from "../../components/EmptyState";
 
 export default function QuizTopics() {
   const { level } = useParams();
   const { t, tn } = useLang();
+  const { quizzesOf } = useLibrary();
 
   const lv = getLevel(level);
   const topics = quizzesOf(level).filter((s) => s.questions?.length);
@@ -40,7 +41,7 @@ export default function QuizTopics() {
               <TopicCard
                 index={i + 1}
                 to={`/quiz/${level}/${s.id}`}
-                title={s.titleDe}
+                title={s.title}
                 subtitle={s.titleKu}
                 info={tn("count.questions", s.questions.length)}
               />

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLang } from "../context/LangContext";
 import { getLevel } from "../data/levels";
+import { LEARN_LANGS, learnLangOf } from "../data/languages";
 import Avatar from "../components/Avatar";
 import { useConfirm } from "../context/ConfirmContext";
 import Icon from "../components/Icon";
@@ -9,13 +10,32 @@ import PageHeader from "../components/PageHeader";
 import { toJpeg, uploadImage } from "../services/upload";
 
 export default function Profile() {
-  const { user, askLogout, setAvatar } = useAuth();
+  const { user, askLogout, setAvatar, setLearnLang } = useAuth();
   const { t } = useLang();
   const confirm = useConfirm();
   const fileRef = useRef(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const level = getLevel((user.level || "A1").toLowerCase());
+  const learnLang = learnLangOf(user);
+  const [langBusy, setLangBusy] = useState(false);
+  const [langError, setLangError] = useState("");
+
+  // Switch the learning language (after asking); stories, words, quizzes and the language toggle follow
+  const switchLearnLang = async (to) => {
+    const language = t(`lang.${to}`);
+    const ok = await confirm({ title: t("profile.switchAsk", { language }), text: t("profile.switchText", { language }), ok: t("profile.switchTo", { language }) });
+    if (!ok) return;
+    setLangBusy(true);
+    setLangError("");
+    try {
+      await setLearnLang(to);
+    } catch (err) {
+      console.error(err);
+      setLangError(t("profile.switchFail"));
+    }
+    setLangBusy(false);
+  };
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
@@ -97,6 +117,20 @@ export default function Profile() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Learning language */}
+      <div className="glass mt-6 flex flex-wrap items-center gap-4 rounded-2xl p-6 sm:px-10">
+        <div className="me-auto">
+          <p className="text-sm text-muted">{t("profile.learning")}</p>
+          <p className="font-display text-2xl font-semibold">{t(`lang.${learnLang}`)}</p>
+        </div>
+        {LEARN_LANGS.filter((l) => l !== learnLang).map((l) => (
+          <button key={l} onClick={() => switchLearnLang(l)} disabled={langBusy} className="btn-ghost px-5 py-3">
+            {t("profile.switchTo", { language: t(`lang.${l}`) })}
+          </button>
+        ))}
+        {langError && <p role="alert" className="w-full text-sm" style={{ color: "var(--bad)" }}>{langError}</p>}
       </div>
 
       <button onClick={askLogout} className="btn-ghost mt-6 inline-flex items-center gap-2 px-5 py-3">

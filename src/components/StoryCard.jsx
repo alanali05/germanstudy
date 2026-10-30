@@ -56,10 +56,10 @@ export default function StoryCard({ to, index, story }) {
       <div className={`flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-3.5 pe-2 sm:gap-1 sm:py-4 ${index == null ? "ps-4 sm:ps-5" : cover ? "ps-3 sm:ps-0" : ""}`}>
         <h3
           dir="ltr"
-          lang="de"
+          lang={story.lang}
           className="font-display line-clamp-2 break-words text-base font-semibold leading-snug sm:text-xl lg:text-2xl"
         >
-          {story.titleDe}
+          {story.title}
         </h3>
         <p dir="rtl" lang="ku" className="line-clamp-1 break-words text-sm text-muted sm:text-base">
           {story.titleKu}

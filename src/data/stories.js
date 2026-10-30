@@ -1,20 +1,23 @@
 // Content store. Firestore is the only source of truth for content (there is no seed or copy in the code).
-// Three Firestore collections, one document per item, each with a "level" field (a1, a2, b1, b2):
-//   stories     – texts to read
-//   wordTopics  – word lists   { titleDe, titleKu, storyId?, words: [...] }
-//   quizzes     – question sets { titleDe, titleKu, storyId?, questions: [...] }
-// plus settings/announcement { text }.
+// Three Firestore collections, one document per item, each with "lang" (de, en) and "level" (a1, a2, b1, b2):
+//   stories     – texts to read  { title, titleKu, segments: [{ text, ku }], … }
+//   wordTopics  – word lists     { title, titleKu, storyId?, words: [...] }
+//   quizzes     – question sets  { title, titleKu, storyId?, questions: [...] }
+// plus settings/announcement { text }. Field names: see contentShape.js (old German-only documents are converted on load).
 // "storyId" is optional: it links a topic/quiz to a story (its words become tappable there).
-// startContentSync() keeps a live in-memory copy (grouped by level, like before), so the getters below stay synchronous.
+// startContentSync() keeps a live in-memory copy grouped by language, then level: content.de.stories.a1 = [...].
 import { useSyncExternalStore } from "react";
 import { collection, deleteDoc, doc, onSnapshot, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { bundleToDocs } from "./storyBundle";
+import { toNewShape } from "./contentShape";
+import { LEARN_LANGS } from "./languages";
 
 const COLS = ["stories", "wordTopics", "quizzes"];
 const LEVEL_IDS = ["a1", "a2", "b1", "b2"];
 const empty = () => ({ a1: [], a2: [], b1: [], b2: [] });
-const emptyContent = () => ({ stories: empty(), wordTopics: empty(), quizzes: empty() });
+const emptyLibrary = () => ({ stories: empty(), wordTopics: empty(), quizzes: empty() });
+const emptyContent = () => Object.fromEntries(LEARN_LANGS.map((l) => [l, emptyLibrary()]));
 
 /* ---------- live copy of the database ---------- */
 const initial = { content: emptyContent(), announcement: "", ready: false };
@@ -33,7 +36,10 @@ export function startContentSync() {
     COLS.forEach((col) => {
       [...parts[col]]
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        .forEach((x) => (content[col][x.level] || content[col].a1).push(x));
+        .forEach((x) => {
+          const lib = content[x.lang] || content.de;
+          (lib[col][x.level] || lib[col].a1).push(x);
+        });
     });
     state = { content, announcement, ready: loaded.size === COLS.length + 1 };
     emit();
@@ -46,7 +52,7 @@ export function startContentSync() {
 
   const unsubs = COLS.map((col) =>
     onSnapshot(collection(db, col), (snap) => {
-      parts[col] = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+      parts[col] = snap.docs.map((d) => ({ ...toNewShape(col, d.data()), id: d.id }));
       loaded.add(col);
       rebuild();
     }, fail(col))
@@ -74,23 +80,27 @@ const subscribe = (l) => {
 export const useContent = () => useSyncExternalStore(subscribe, () => state);
 
 /* ---------- read ---------- */
-export const getContent = () => state.content;
-export const getStories = () => state.content.stories;
-export const storiesOf = (level) => state.content.stories[level] || [];
-export const findStory = (level, id) => storiesOf(level).find((s) => s.id === id);
-
-export const wordTopicsOf = (level) => state.content.wordTopics[level] || [];
-export const findWordTopic = (level, id) => wordTopicsOf(level).find((t) => t.id === id);
-export const quizzesOf = (level) => state.content.quizzes[level] || [];
-export const findQuiz = (level, id) => quizzesOf(level).find((q) => q.id === id);
-
-// Words / quizzes that belong to a story (any level)
-export const linkedWords = (storyId) =>
-  LEVEL_IDS.flatMap((l) => wordTopicsOf(l)).filter((t) => t.storyId === storyId).flatMap((t) => t.words);
-export const linkedQuizzes = (storyId) =>
-  LEVEL_IDS.flatMap((l) => quizzesOf(l).filter((q) => q.storyId === storyId && q.questions?.length).map((q) => ({ ...q, level: l })));
-export const linkedWordTopics = (storyId) =>
-  LEVEL_IDS.flatMap((l) => wordTopicsOf(l).filter((t) => t.storyId === storyId && t.words?.length).map((t) => ({ ...t, level: l })));
+// Getters for one language's library (student pages get it from useLibrary(), bound to their learning language)
+export function libraryOf(content, lang) {
+  const lib = content[lang] || content.de;
+  const storiesOf = (level) => lib.stories[level] || [];
+  const wordTopicsOf = (level) => lib.wordTopics[level] || [];
+  const quizzesOf = (level) => lib.quizzes[level] || [];
+  const every = (col) => LEVEL_IDS.flatMap((l) => (lib[col][l] || []).map((x) => ({ ...x, level: l })));
+  return {
+    all: { stories: every("stories"), wordTopics: every("wordTopics"), quizzes: every("quizzes") },
+    storiesOf,
+    findStory: (level, id) => storiesOf(level).find((s) => s.id === id),
+    wordTopicsOf,
+    findWordTopic: (level, id) => wordTopicsOf(level).find((t) => t.id === id),
+    quizzesOf,
+    findQuiz: (level, id) => quizzesOf(level).find((q) => q.id === id),
+    // Words / quizzes that belong to a story (any level)
+    linkedWords: (storyId) => every("wordTopics").filter((t) => t.storyId === storyId).flatMap((t) => t.words),
+    linkedQuizzes: (storyId) => every("quizzes").filter((q) => q.storyId === storyId && q.questions?.length),
+    linkedWordTopics: (storyId) => every("wordTopics").filter((t) => t.storyId === storyId && t.words?.length),
+  };
+}
 
 export const getAnnouncement = () => state.announcement;
 
@@ -104,12 +114,13 @@ export async function saveBundle(bundle) {
   await batch.commit();
 }
 
-// Deletes a story together with every word list and quiz linked to it
+// Deletes a story together with every word list and quiz linked to it (in any language)
 export async function deleteBundle(storyId) {
   const batch = writeBatch(db);
   batch.delete(doc(db, "stories", storyId));
   for (const col of ["wordTopics", "quizzes"]) {
-    LEVEL_IDS.forEach((l) => state.content[col][l].filter((x) => x.storyId === storyId).forEach((x) => batch.delete(doc(db, col, x.id))));
+    LEARN_LANGS.forEach((lang) => LEVEL_IDS.forEach((l) =>
+      state.content[lang][col][l].filter((x) => x.storyId === storyId).forEach((x) => batch.delete(doc(db, col, x.id)))));
   }
   await batch.commit();
 }

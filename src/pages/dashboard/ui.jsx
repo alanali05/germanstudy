@@ -1,7 +1,7 @@
 // Small building blocks shared by the dashboard sections
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
-import { useBi } from "./bi";
+import { useTr } from "./bi";
 
 // One-line text that grows taller as it wraps, so long sentences stay readable. Enter and pasted line
 // breaks become spaces (a sentence is one line of text). onValue gets the new string.
@@ -34,7 +34,7 @@ export function AutoText({ value, onValue, className = "", ...props }) {
 }
 
 // Long texts / JSX in the app language
-export const Bi = ({ de, ku }) => useBi()(de, ku);
+export const Tr = ({ de, ku, en }) => useTr()(de, ku, en);
 
 export function Field({ label, hint, children }) {
   return (
@@ -62,7 +62,7 @@ export function Box({ id, title, aside, active, children }) {
 }
 
 export function Row({ title, sub, badge, onEdit, onDelete }) {
-  const bi = useBi();
+  const tr = useTr();
   return (
     <div className="flex items-center gap-2 border-b border-line py-3 last:border-b-0 sm:gap-3">
       {badge}
@@ -71,13 +71,13 @@ export function Row({ title, sub, badge, onEdit, onDelete }) {
         {sub && <p className="truncate text-sm text-muted" dir="auto">{sub}</p>}
       </div>
       {onEdit && (
-        <button onClick={onEdit} className="btn-mini inline-flex items-center gap-1 text-sm" aria-label={`${bi("Bearbeiten", "دەستکاریکرن")} ${title}`}>
-          <Pencil size={15} /><span className="hidden md:inline">{bi("Bearbeiten", "دەستکاریکرن")}</span>
+        <button onClick={onEdit} className="btn-mini inline-flex items-center gap-1 text-sm" aria-label={`${tr("Bearbeiten", "دەستکاریکرن", "Edit")} ${title}`}>
+          <Pencil size={15} /><span className="hidden md:inline">{tr("Bearbeiten", "دەستکاریکرن", "Edit")}</span>
         </button>
       )}
       {onDelete && (
-        <button onClick={onDelete} className="btn-danger inline-flex items-center gap-1 text-sm" aria-label={`${bi("Löschen", "سڕین")} ${title}`}>
-          <Trash2 size={15} /><span className="hidden md:inline">{bi("Löschen", "سڕین")}</span>
+        <button onClick={onDelete} className="btn-danger inline-flex items-center gap-1 text-sm" aria-label={`${tr("Löschen", "سڕین", "Delete")} ${title}`}>
+          <Trash2 size={15} /><span className="hidden md:inline">{tr("Löschen", "سڕین", "Delete")}</span>
         </button>
       )}
     </div>
@@ -85,30 +85,30 @@ export function Row({ title, sub, badge, onEdit, onDelete }) {
 }
 
 export function Msg({ m }) {
-  const bi = useBi();
+  const tr = useTr();
   if (!m) return null;
-  return <p role="status" className="mt-3 text-sm font-medium" style={{ color: m.ok ? "var(--ok)" : "var(--bad)" }}>{m.text ?? bi(m.de, m.ku)}</p>;
+  return <p role="status" className="mt-3 text-sm font-medium" style={{ color: m.ok ? "var(--ok)" : "var(--bad)" }}>{m.text ?? tr(m.de, m.ku, m.en)}</p>;
 }
 
 export function SubmitRow({ editing, label, onCancel, busy }) {
-  const bi = useBi();
+  const tr = useTr();
   return (
     <div className="mt-5 flex flex-wrap gap-3">
       <button disabled={busy} className="btn-primary inline-flex items-center gap-2 px-6 py-3">
         {editing ? <Pencil size={17} /> : <Plus size={18} />}
-        {editing ? bi("Änderungen speichern", "گوهۆڕینان بپارێزە") : label}
+        {editing ? tr("Änderungen speichern", "گوهۆڕینان بپارێزە", "Save changes") : label}
       </button>
-      {editing && <button type="button" onClick={onCancel} className="btn-ghost px-5 py-3">{bi("Abbrechen", "هەلوەشاندن")}</button>}
+      {editing && <button type="button" onClick={onCancel} className="btn-ghost px-5 py-3">{tr("Abbrechen", "هەلوەشاندن", "Cancel")}</button>}
     </div>
   );
 }
 
 export function SearchBox({ value, onChange }) {
-  const bi = useBi();
+  const tr = useTr();
   return (
     <div className="relative">
       <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-faint" />
-      <input className="field !mt-0 !ps-9" placeholder={bi("Suchen…", "گەڕیان…")} value={value} onChange={(e) => onChange(e.target.value)} aria-label={bi("Suchen", "گەڕیان")} />
+      <input className="field !mt-0 !ps-9" placeholder={tr("Suchen…", "گەڕیان…", "Search…")} value={value} onChange={(e) => onChange(e.target.value)} aria-label={tr("Suchen", "گەڕیان", "Search")} />
     </div>
   );
 }

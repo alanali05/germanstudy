@@ -4,11 +4,12 @@ import StoryReader from "../../components/StoryReader";
 import Icon from "../../components/Icon";
 import { useLang } from "../../context/LangContext";
 import { getLevel } from "../../data/levels";
-import { findStory, linkedQuizzes, linkedWordTopics } from "../../data/stories";
+import { useLibrary } from "../../data/useLibrary";
 
 export default function StoryDetail() {
   const { level, storyId } = useParams();
   const { t } = useLang();
+  const { findStory, linkedQuizzes, linkedWordTopics, linkedWords, lang } = useLibrary();
   const location = useLocation();
   const lv = getLevel(level);
   const story = findStory(level, storyId);
@@ -63,11 +64,11 @@ export default function StoryDetail() {
           </span>
         )}
         <h1
-          lang="de"
+          lang={lang}
           className="font-display min-w-0 flex-1 break-words text-2xl font-semibold leading-tight
                      sm:text-3xl lg:text-4xl"
         >
-          {story.titleDe}
+          {story.title}
         </h1>
       </div>
 
@@ -80,7 +81,7 @@ export default function StoryDetail() {
         {story.titleKu}
       </p>
 
-      <StoryReader story={story} />
+      <StoryReader story={story} words={linkedWords(story.id)} lang={lang} />
 
       {(quizzes.length > 0 || words.length > 0) && (
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -90,7 +91,7 @@ export default function StoryDetail() {
               to={`/words/${w.level}/${w.id}`}
               className="btn-ghost inline-flex w-full items-center justify-center px-5 py-3 text-center font-semibold sm:w-auto"
             >
-              {t("nav.words")} · {w.titleDe}
+              {t("nav.words")} · {w.title}
             </Link>
           ))}
           {quizzes.map((q) => (
@@ -99,7 +100,7 @@ export default function StoryDetail() {
               to={`/quiz/${q.level}/${q.id}`}
               className="btn-primary inline-flex w-full items-center justify-center px-5 py-3 text-center sm:w-auto"
             >
-              {t("nav.quiz")} · {q.titleDe}
+              {t("nav.quiz")} · {q.title}
             </Link>
           ))}
         </div>

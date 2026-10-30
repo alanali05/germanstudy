@@ -3,11 +3,11 @@ import { createPortal } from "react-dom";
 import Icon from "./Icon";
 import { useLang } from "../context/LangContext";
 import { speak, stopSpeaking } from "../utils/speak";
-import { linkedWords } from "../data/stories";
 
 const scrollBehavior = () => (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
 
-export default function StoryReader({ story }) {
+// story: the story; words: its vocabulary (tappable in the text); lang: the learning language ("de" | "en")
+export default function StoryReader({ story, words, lang }) {
   const { t } = useLang();
   const segs = story.segments;
   const [showKu, setShowKu] = useState(true);
@@ -20,11 +20,11 @@ export default function StoryReader({ story }) {
   const controlsRef = useRef(null);
   const [controlsInView, setControlsInView] = useState(true);
 
-  // Map: german word or phrase (lowercase) -> vocabulary entry, plus one regex that finds them all
+  // Map: word or phrase in the learning language (lowercase) -> vocabulary entry, plus one regex that finds them all
   const { vocab, matcher } = useMemo(() => {
     const map = new Map();
-    linkedWords(story.id).forEach((v) => {
-      const key = v.wordDe.trim().toLowerCase();
+    words.forEach((v) => {
+      const key = v.word.trim().toLowerCase();
       if (key && !map.has(key)) map.set(key, v);
     });
     const alts = [...map.keys()]
@@ -32,7 +32,7 @@ export default function StoryReader({ story }) {
       .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+"));
     const re = alts.length ? new RegExp(`(?<![\\p{L}\\p{N}])(${alts.join("|")})(?![\\p{L}\\p{N}])`, "giu") : null;
     return { vocab: map, matcher: re };
-  }, [story]);
+  }, [words]);
 
   // Stop the voice when the student leaves the page
   useEffect(() => {
@@ -64,7 +64,7 @@ export default function StoryReader({ story }) {
 
   // Nearest sentence with German text from i on, going forward (step 1) or back (-1); -1 if there is none
   const findSentence = (i, step) => {
-    while (i >= 0 && i < segs.length && !segs[i].de?.trim()) i += step;
+    while (i >= 0 && i < segs.length && !segs[i].text?.trim()) i += step;
     return i >= 0 && i < segs.length ? i : -1;
   };
   const stop = () => {
@@ -85,7 +85,7 @@ export default function StoryReader({ story }) {
     const id = ++run.current;
     setCurrent(i);
     setPlaying(true);
-    speak(segs[i].de, () => { if (run.current === id) readFrom(i + 1); });
+    speak(segs[i].text, lang, () => { if (run.current === id) readFrom(i + 1); });
   };
   const toggleListen = () => (current === null ? readFrom(0) : playing ? pause() : readFrom(current));
   const prev = () => readFrom(Math.max(0, findSentence(current - 1, -1)));
@@ -119,8 +119,8 @@ export default function StoryReader({ story }) {
             className={`seg -mx-3 border-b border-line px-3 py-4 last:border-b-0 ${i === current ? "seg-reading" : ""}`}
           >
             {/* German sentence, every word with a meaning is clickable */}
-            <p dir="ltr" lang="de" className="font-display text-xl leading-9 sm:text-2xl sm:leading-10">
-              {(matcher ? seg.de.split(matcher) : [seg.de]).map((part, j) => {
+            <p dir="ltr" lang={lang} className="font-display text-xl leading-9 sm:text-2xl sm:leading-10">
+              {(matcher ? seg.text.split(matcher) : [seg.text]).map((part, j) => {
                 if (j % 2 === 0) return <span key={j}>{part}</span>;
                 const entry = vocab.get(part.toLowerCase().replace(/\s+/g, " "));
                 if (!entry) return <span key={j}>{part}</span>;
@@ -176,11 +176,11 @@ export default function StoryReader({ story }) {
       {/* Meaning card: rendered on <body>, so no parent (animation, transform) can push it to the bottom of the page */}
       {active &&
         createPortal(
-          <div role="dialog" aria-label={active.wordDe} className="meaning-card">
+          <div role="dialog" aria-label={active.word} className="meaning-card">
             <div className="flex items-start gap-3">
-              <div dir="ltr" lang="de" className="flex flex-wrap items-center gap-3">
-                <span className="font-display text-3xl font-extrabold">{active.wordDe}</span>
-                <button onClick={() => speak(active.wordDe)} aria-label={t("common.listen")} className="btn-ghost p-2 text-muted hover:text-fg">
+              <div dir="ltr" lang={lang} className="flex flex-wrap items-center gap-3">
+                <span className="font-display text-3xl font-extrabold">{active.word}</span>
+                <button onClick={() => speak(active.word, lang)} aria-label={t("common.listen")} className="btn-ghost p-2 text-muted hover:text-fg">
                   <Icon name="volume" size={18} />
                 </button>
               </div>
@@ -193,10 +193,10 @@ export default function StoryReader({ story }) {
               {active.wordKu}
             </p>
 
-            {(active.sentenceDe || active.sentenceKu) && (
+            {(active.sentence || active.sentenceKu) && (
               <div className="mt-4 border-t border-line pt-4">
                 <p className="mb-2 text-sm text-muted">{t("word.example")}</p>
-                <p dir="ltr" lang="de" className="text-fg">{active.sentenceDe}</p>
+                <p dir="ltr" lang={lang} className="text-fg">{active.sentence}</p>
                 <p dir="rtl" lang="ku" className="mt-1 text-right text-muted">{active.sentenceKu}</p>
               </div>
             )}

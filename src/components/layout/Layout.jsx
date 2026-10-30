@@ -33,7 +33,10 @@ export default function Layout() {
       <Welcome />
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 start-0 z-20 hidden w-72 flex-col border-e border-line bg-card p-6 lg:flex">
-        <div className="px-3 font-display text-2xl font-semibold">{APP_NAME}</div>
+        <div className="flex items-center justify-between gap-3 ps-3">
+          <span className="font-display text-2xl font-semibold">{APP_NAME}</span>
+          <ThemeToggle />
+        </div>
 
         <nav className="mt-10 flex flex-col gap-1">
           {links.map((l) => (
@@ -54,7 +57,7 @@ export default function Layout() {
         </nav>
 
         <div className="mt-auto space-y-3">
-          <div className="flex items-center gap-2"><LangSwitch /><ThemeToggle /></div>
+          <LangSwitch full />
           <div className="flex items-center gap-3 rounded-2xl bg-soft p-3">
             <Avatar user={user} size={44} />
             <div className="min-w-0">

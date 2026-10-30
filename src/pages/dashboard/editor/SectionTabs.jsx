@@ -1,10 +1,10 @@
-import { useBi } from "../bi";
+import { useTr } from "../bi";
 
 // The editor's sections as tabs: a column next to the content on wide screens (stays in view while
 // scrolling), a 2×2 grid (phones) or a row of four (tablets) above it. Arrow keys / Home / End move between tabs (WAI-ARIA tabs pattern).
 // tabs: [{ id, label, count, error }]
 export default function SectionTabs({ tabs, active, onSelect }) {
-  const bi = useBi();
+  const tr = useTr();
 
   const onKeyDown = (e) => {
     const i = tabs.findIndex((t) => t.id === active);
@@ -20,7 +20,7 @@ export default function SectionTabs({ tabs, active, onSelect }) {
   return (
     <div className="flex-[1_1_11rem] lg:sticky lg:top-6 lg:max-w-56">
       <div
-        role="tablist" aria-label={bi("Teile der Geschichte", "پشکێن چیرۆکێ")} onKeyDown={onKeyDown}
+        role="tablist" aria-label={tr("Teile der Geschichte", "پشکێن چیرۆکێ", "Parts of the story")} onKeyDown={onKeyDown}
         className="glass grid grid-cols-2 gap-1 rounded-2xl p-2 sm:grid-cols-4 lg:flex lg:flex-col"
       >{/* KU: review */}
         {tabs.map((t) => {
@@ -35,7 +35,7 @@ export default function SectionTabs({ tabs, active, onSelect }) {
               <span className="truncate">{t.label}</span>
               <span className="flex items-center gap-2">
                 {t.error && (
-                  <span role="img" aria-label={bi("hat Fehler", "هەلە تێدا هەنە")} className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--bad)" }} />
+                  <span role="img" aria-label={tr("hat Fehler", "هەلە تێدا هەنە", "has errors")} className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--bad)" }} />
                 )}{/* KU: review */}
                 <span className="text-xs font-bold text-link">{t.count}</span>
               </span>

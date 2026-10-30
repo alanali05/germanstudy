@@ -4,7 +4,7 @@ import QuestionCard from "../../components/QuestionCard";
 import EmptyState from "../../components/EmptyState";
 import { useLang } from "../../context/LangContext";
 import { getLevel } from "../../data/levels";
-import { findQuiz } from "../../data/stories";
+import { useLibrary } from "../../data/useLibrary";
 import PageHeader from "../../components/PageHeader";
 
 const scrollBehavior = () => (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
@@ -12,6 +12,7 @@ const scrollBehavior = () => (window.matchMedia("(prefers-reduced-motion: reduce
 export default function QuizPlay() {
   const { level, topicId } = useParams();
   const { t } = useLang();
+  const { findQuiz, lang } = useLibrary();
   const lv = getLevel(level);
   const story = findQuiz(level, topicId);
   const quiz = story?.questions || [];
@@ -98,7 +99,7 @@ export default function QuizPlay() {
 
   return (
     <div style={{ "--accent": lv.color }} className="mx-auto max-w-2xl">
-      <PageHeader title={story.titleDe} subtitle={story.titleKu} backTo={`/quiz/${level}`} />
+      <PageHeader title={story.title} subtitle={story.titleKu} backTo={`/quiz/${level}`} />
 
       <div ref={topRef} className="mb-2 flex scroll-mt-4 justify-between text-sm text-muted">
         <span>{t("quiz.questionOf", { i: index + 1, n: total })}</span>
@@ -113,7 +114,8 @@ export default function QuizPlay() {
 
       <QuestionCard
         key={index}
-        questionDe={q.questionDe}
+        question={q.question}
+        lang={lang}
         questionKu={q.questionKu}
         options={q.options}
         selected={selected}

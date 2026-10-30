@@ -1,6 +1,6 @@
 # CODEBASE.md — LinguaSchool architecture
 
-LinguaSchool is a React single-page app for learning German, built for speakers of Kurdish (Badini, Arabic script). The browser talks directly to **Firebase**:
+LinguaSchool is a React single-page app for learning German or English (each student has one learning language), built for speakers of Kurdish (Badini, Arabic script). The browser talks directly to **Firebase**:
 - **Auth** (Email/Password) for login codes.
 - **Cloud Firestore** for content, students, the announcement, and avatar links.
 
@@ -51,7 +51,7 @@ Access is enforced by `firestore.rules`. Image files live in **Cloudflare R2**. 
 | Icons | Custom `Icon.jsx` SVG set, and `lucide-react` (ThemeToggle, Dashboard) |
 | Backend | Firebase JS SDK v12: Auth (Email/Password) and Cloud Firestore (`europe-west3`), Spark (free) plan |
 | Images | Cloudflare R2 (`linguaschool-images`, Western Europe), public r2.dev URL; uploads signed by one Vercel function (`jose`, `aws4fetch`) |
-| Speech | Web Speech API (`speechSynthesis`, `de-DE`) |
+| Speech | Web Speech API (`speechSynthesis`, `de-DE` / `en-GB`) |
 | Lint | ESLint 10 flat config: `js.recommended`, `react-hooks`, `react-refresh/vite` |
 | Deploy | Vercel (`vercel.json` SPA rewrite, `api/` functions) |
 | Tests | none |
@@ -74,13 +74,13 @@ germanstudy/
 └── src/
     ├── main.jsx               # provider tree + router
     ├── App.jsx                # renders <AppRoutes/>
-    ├── config.js              # APP_NAME, SPEECH_LANG, OWNER_UID, CODE_EMAIL_DOMAIN
-    ├── i18n.js                # dict: { key: { de, ku } } for all student UI text
+    ├── config.js              # APP_NAME, SPEECH_LANGS, OWNER_UID, CODE_EMAIL_DOMAIN
+    ├── i18n.js                # dict: { key: { de, ku, en } } for all student UI text (i18n.test.js checks completeness)
     ├── index.css              # theme tokens, component classes, animations
     ├── lib/firebase.js        # initializeApp, auth, db (Firestore), firebaseConfig
     ├── context/
     │   ├── ThemeContext.jsx   # theme state + toggle
-    │   ├── LangContext.jsx    # lang state, t(), tn(), RTL handling
+    │   ├── LangContext.jsx    # lang state (ku|de|en, limited to the allowed ones), t(), tn(), RTL handling
     │   └── AuthContext.jsx    # Firebase session → profile, logout, setAvatar
     ├── routes/
     │   ├── AppRoutes.jsx      # route table + OwnerOnly guard; subscribes to content
@@ -109,12 +109,12 @@ germanstudy/
     │   ├── EmptyState.jsx     # "nothing here" card with link
     │   ├── Avatar.jsx         # image or initials circle
     │   ├── Icon.jsx           # inline SVG icon map
-    │   ├── LangSwitch.jsx     # کوردی / Deutsch segmented toggle
+    │   ├── LangSwitch.jsx     # interface language toggle: کوردی + learning language (owner: all three)
     │   └── ThemeToggle.jsx    # sun/moon button
     └── pages/
         ├── Login.jsx, Home.jsx, Profile.jsx, NotFound.jsx
         ├── dashboard/  DashboardLayout.jsx, LibraryPage.jsx, LibraryCard.jsx, StudentsPage.jsx, SettingsPage.jsx,
-        │               bi.js (useBi + messages), ui.jsx (Field, Box, Row, Msg, SearchBox …)
+        │               bi.js (useTr, byLang + messages), ui.jsx (Field, Box, Row, Msg, SearchBox, AutoText, Tr …)
         │   └── editor/ StoryEditorPage.jsx, SectionTabs, DetailsSection, SentencesSection, BulkPaste,
         │               WordsSection, QuizSection, SaveBar
         ├── stories/  StoriesLevels.jsx → StoriesList.jsx → StoryDetail.jsx
@@ -174,13 +174,13 @@ All three learning sections follow the same **three-step drill-down: Levels → 
 - `{ theme, toggle }`. Writes `html[data-theme]` and `localStorage.theme`.
 
 ### LangContext (`useLang`)
-- `{ lang, setLang, t, tn }`.
+- `{ lang, setLang, allowed, setAllowed, t, tn }`. `allowed` comes from `AuthContext` (`uiLangsFor(user)`): Kurdish + the learning language for students, all three for the owner and when logged out. A saved `lang` that isn't allowed falls back to the learning language.
 - `t(key, vars)`: looks up `dict[key][lang]`, falls back to `.de`, then to the key itself. Replaces every `{var}`.
 - `tn(key, n)`: uses `key.one` when `n === 1` and that key exists, and passes `{ n }`.
 
 ### AuthContext (`useAuth`)
-- `{ user, loading, logout(), setAvatar(url|null) }`.
-- `user` = `{ uid, code, name, className, level: "A1"…, role: "owner"|"student", avatar }`.
+- `{ user, loading, logout(), askLogout(), setAvatar(url|null), setLearnLang(lang) }`.
+- `user` = `{ uid, code, name, className, level: "A1"…, learnLang?: "de"|"en", role: "owner"|"student", avatar }` (`learnLangOf(user)` defaults to `de`).
   - It's built by `loadProfile(fbUser)` in `data/students.js`.
   - `role` is computed by comparing `uid` to `OWNER_UID`; it is not stored.
   - If an account has no `students` document (a deleted student), it is signed out again.
@@ -197,15 +197,16 @@ Pages import plain **synchronous** getter functions from `src/data/*` and call t
 
 | Path | Fields | Read | Write |
 |---|---|---|---|
-| `stories/{id}` | `level` (a1…b2), `order`, `titleDe`, `titleKu`, `readTime?`, `coverImage?`, `segments[{de,ku}]` | member | owner |
-| `wordTopics/{id}` | `level`, `order`, `titleDe`, `titleKu`, `storyId?`, `words[{wordDe,wordKu,sentenceDe,sentenceKu}]` | member | owner |
-| `quizzes/{id}` | `level`, `order`, `titleDe`, `titleKu`, `storyId?`, `questions[{questionDe,questionKu,options[],correctAnswer}]` | member | owner |
+| `stories/{id}` | `lang` (de, en), `level` (a1…b2), `order`, `title`, `titleKu`, `readTime?`, `coverImage?`, `segments[{text,ku}]` | member | owner |
+| `wordTopics/{id}` | `lang`, `level`, `order`, `title`, `titleKu`, `storyId?`, `words[{word,wordKu,sentence,sentenceKu}]` | member | owner |
+| `quizzes/{id}` | `lang`, `level`, `order`, `title`, `titleKu`, `storyId?`, `questions[{question,questionKu,options[],correctAnswer}]` | member | owner |
 | `settings/announcement` | `text` | member | owner |
-| `students/{uid}` | `code`, `name`, `className`, `level` ("A1"…) | owner, or the student themself | owner |
+| `students/{uid}` | `code`, `name`, `className`, `level` ("A1"…), `learnLang` ("de"/"en", missing = de) | owner, or the student themself | owner; the student only their own `learnLang` |
 | `avatars/{uid}` | `url` (https string < 500 chars, points to R2) | the user themself or owner (if member) | the user themself or owner (if member) |
 
 - **owner** = `request.auth.uid == OWNER_UID`. The uid is hard-coded in `firestore.rules` and must match `src/config.js`.
 - **member** = the owner, or a signed-in user whose `students/{uid}` document exists. Deleting that document revokes access.
+- Field names are neutral: `title`, `segments[].text`, `word`, `sentence` and `question` hold the **learning language** (German or English, see `lang`); the `…Ku` fields hold Kurdish. Older documents (`titleDe`, `segments[].de`, `wordDe`, `sentenceDe`, `questionDe`, no `lang`) are converted on load by `toNewShape` in `data/contentShape.js`.
 - The rules are deployed by pasting them into Firebase console → Firestore → Rules. There is no CLI setup.
 
 ### 7.1 Levels — `data/levels.js`
@@ -219,23 +220,22 @@ Level descriptions and names live in i18n (`level.a1`, `level.a1.desc`, …).
 
 Firestore is the **single source of truth** for content. There are no story files or seed data in the code; stories are created in the dashboard editor.
 
-**Shape of the in-memory copy:**
+**Shape of the in-memory copy** (by learning language, then level):
 ```js
 {
-  stories:    { a1: Story[],     a2, b1, b2 },
-  wordTopics: { a1: WordTopic[], a2, b1, b2 },
-  quizzes:    { a1: Quiz[],      a2, b1, b2 },
+  de: { stories: { a1: Story[], a2, b1, b2 }, wordTopics: { a1: WordTopic[], … }, quizzes: { a1: Quiz[], … } },
+  en: { …same… },
 }
-Story     = { id, titleDe, titleKu, readTime?, coverImage?, segments: [{ de, ku }] }   // + level, order from Firestore
-WordTopic = { id, titleDe, titleKu, storyId?, words: [{ wordDe, wordKu, sentenceDe, sentenceKu }] }
-Quiz      = { id, titleDe, titleKu, storyId?, questions: [{ questionDe, questionKu, options: string[], correctAnswer: number }] }
+Story     = { id, lang, title, titleKu, readTime?, coverImage?, segments: [{ text, ku }] }   // + level, order from Firestore
+WordTopic = { id, lang, title, titleKu, storyId?, words: [{ word, wordKu, sentence, sentenceKu }] }
+Quiz      = { id, lang, title, titleKu, storyId?, questions: [{ question, questionKu, options: string[], correctAnswer: number }] }
 ```
 
 **Lifecycle:**
 ```
 startContentSync()            (called by ProtectedRoute when user.uid is set; returns stop())
   onSnapshot(stories | wordTopics | quizzes | settings/announcement)
-    → rebuild(): group docs by `level`, sort by `order`  → state = { content, announcement, ready }
+    → rebuild(): toNewShape each doc, group by `lang` then `level`, sort by `order`  → state = { content, announcement, ready }
     → notify useContent() subscribers (AppRoutes re-renders everything)
 stop() (logout) → listeners closed, state reset to empty / not ready
 ```
@@ -243,21 +243,23 @@ stop() (logout) → listeners closed, state reset to empty / not ready
 **API:**
 | Function | Purpose |
 |---|---|
-| `getContent()`, `getStories()` | whole store / stories map |
-| `storiesOf(lv)`, `findStory(lv, id)` | stories by level |
-| `wordTopicsOf(lv)`, `findWordTopic(lv, id)` | word topics by level |
-| `quizzesOf(lv)`, `findQuiz(lv, id)` | quizzes by level |
-| `linkedWords(storyId)` | all words from every topic linked to a story (any level) |
-| `linkedWordTopics(storyId)`, `linkedQuizzes(storyId)` | linked non-empty topics and quizzes, each with `level` added |
+| `libraryOf(content, lang)` | the getters for one language: `all` ({stories, wordTopics, quizzes}, each item with `level`), `storiesOf(lv)`, `findStory(lv, id)`, `wordTopicsOf(lv)`, `findWordTopic(lv, id)`, `quizzesOf(lv)`, `findQuiz(lv, id)`, `linkedWords(storyId)`, `linkedWordTopics(storyId)`, `linkedQuizzes(storyId)` |
+| `useLibrary()` (`data/useLibrary.js`) | `libraryOf` for the logged-in user's learning language, plus `lang`. For the owner it follows the language toggle (Deutsch/English; on Kurdish their profile learning language), and `?lang=` overrides that |
 | `getAnnouncement()` | current announcement text |
 | `useContent()` | `useSyncExternalStore` hook that returns `{ content, announcement, ready }` |
 | `startContentSync()` | opens the listeners and returns the stop function |
 | `saveBundle(bundle)` | one `writeBatch` with the writes from `bundleToDocs` (story, word list, quiz; empty ones are deleted) |
-| `deleteBundle(storyId)` | one `writeBatch` deleting the story and every word topic / quiz with that `storyId` |
+| `deleteBundle(storyId)` | one `writeBatch` deleting the story and every word topic / quiz with that `storyId` (any language) |
 | `setAnnouncement(text)` | sets `settings/announcement`, or deletes it when the text is empty |
 
 ### 7.3 Story bundles — `data/storyBundle.js`
-Pure functions (no Firebase) that the dashboard editor uses: `loadBundle`, `cleanBundle`, `validateBundle`, `bundleToDocs`, `storyHealth`, `moveItem`, `parsePaste`, `generateQuestions`, `slugId`. Unit-tested in `storyBundle.test.js` (`npm test`). Details: section 8, Dashboard.
+Pure functions (no Firebase) that the dashboard editor uses: `emptyBundle(lang)`, `loadBundle`, `cleanBundle`, `validateBundle`, `bundleToDocs`, `storyHealth`, `moveItem`, `parsePaste`, `generateQuestions(words, existing, { pool, lang })`, `slugId`. A bundle has the story's `lang`; `loadBundle(content, id)` finds the story in any language and links the word list and quiz of that language only; `bundleToDocs` writes `lang` into all three documents. Unit-tested in `storyBundle.test.js` (`npm test`). Details: section 8, Dashboard.
+
+### 7.3b Learning languages — `data/languages.js`, `data/contentShape.js`
+- `LEARN_LANGS` (`["de", "en"]`), `LANG_NAME` (each language's own name), `learnLangOf(user)` (default `de`), `uiLangsFor(user)`.
+- `toNewShape(col, data)` / `isNewShape(col, data)`: old → new field names (tested in `contentShape.test.js`).
+- Students get their learning language from the teacher (Schüler form) and can switch it on the Profile page (confirm dialog → `setLearnLang`, allowed for their own document by `firestore.rules`).
+- On 2026-10-30 every existing document was migrated to the new field names (`lang: "de"`) and the English library (17 stories with word lists and quizzes, translated from the German ones) was imported, with a one-off script that has since been removed.
 
 ### 7.4 Students — `data/students.js`
 - **Code accounts.**
@@ -266,7 +268,7 @@ Pure functions (no Firebase) that the dashboard editor uses: `loadBundle`, `clea
 - `loadProfile(fbUser)` reads `students/{uid}` and `avatars/{uid}`, and returns the profile with `role`, or `null` if the account isn't a member. On the owner's first login it creates the owner's `students` document.
 - `saveAvatar(uid, url|null)`: sets `avatars/{uid}` to `{ url }` or deletes it.
 - `useStudents()`: a live `onSnapshot` list of all students except the owner, sorted by name. Owner only.
-- `createStudent({name, className, level})`:
+- `createStudent({name, className, level, learnLang})`:
   - Creates the Auth account through a **second Firebase app** (`"student-creator"`, `inMemoryPersistence`), so the owner's own session isn't replaced.
   - Then writes `students/{uid}`.
   - It generates `FIRSTNAME-####` and retries if that code is taken. It returns the code.
@@ -305,7 +307,7 @@ It returns nothing. `AuthContext`'s listener picks up the new session.
 - Code login only. Google sign-in isn't enabled yet; it may be added later.
 
 ### Layout (`components/layout/Layout.jsx`)
-- Desktop (`lg+`): a fixed 18rem sidebar on the **start** side, with nav links, LangSwitch and ThemeToggle, a user card, and logout.
+- Desktop (`lg+`): a fixed 18rem sidebar on the **start** side, with the app name and ThemeToggle at the top, nav links, a full-width LangSwitch (`full`), a user card, and logout.
 - Mobile: a top bar (app name, toggles) and a fixed bottom tab bar. Its column count equals the number of links, so it has 6 columns when the owner's Dashboard link is shown.
 - Renders `<Welcome/>`, a full-screen greeting that closes itself after 3 s and appears once per session.
 
@@ -317,17 +319,17 @@ It returns nothing. `AuthContext`'s listener picks up the new session.
 - `StoriesList`: `StoryCard`s numbered 1..n. The number is passed through `Link state={{ index }}`.
 - `StoryDetail`: level and read-time chips, number plus German title, Kurdish title, then `StoryReader`, then buttons for linked word topics and quizzes.
 - **`StoryReader`**:
-  - Builds a `Map` from lowercase `wordDe` to entry using `linkedWords(story.id)`, plus one Unicode-aware regex. Phrases are sorted longest-first and multi-word phrases match any whitespace.
+  - Builds a `Map` from lowercase `word` to entry using the `words` prop (`linkedWords(story.id)` from StoryDetail), plus one Unicode-aware regex. Phrases are sorted longest-first and multi-word phrases match any whitespace.
   - Splits each `seg.de` with the capturing regex. Odd parts are matches and render as `.tap-word` buttons.
   - Clicking a word opens a **meaning card**, portaled to `document.body` so parent transforms and animations don't move it. It shows the DE word with a listen button, the KU meaning, and example sentences. Escape closes it.
   - "Listen" reads the story aloud sentence by sentence (one utterance each, so long stories don't cut off) and highlights the sentence being read, scrolling it into view. The button turns into pause/resume, with a stop button next to it. When those controls are scrolled out of view while reading, floating controls (previous, play/pause, next, "3/17", stop) appear at the bottom (hidden while a word card is open). A toggle shows or hides the Kurdish lines. Speech stops on unmount.
 
 ### Words
-- `WordsLevels` (total word counts) → `WordsTopics` (`TopicCard` list) → `WordsList`, which has a search box filtering on `wordDe + wordKu` and shows `WordRow`s (German on the left with a listen button, Kurdish on the right).
+- `WordsLevels` (total word counts) → `WordsTopics` (`TopicCard` list) → `WordsList`, which has a search box filtering on `word + wordKu` and shows `WordRow`s (learning language on the left with a listen button, Kurdish on the right).
 
 ### Quiz
 - `QuizLevels` → `QuizTopics` → `QuizPlay`.
-- `QuizPlay` keeps local state: `index`, `selected`, `score`, `finished`. `QuestionCard` locks after the first choice and marks options as right, wrong, or dimmed. A speaker button reads the German question (Kurdish parts left out) and each German answer aloud. After answering, the page scrolls the "next" button into view (on phones it is otherwise under the tab bar); the next question scrolls back up.
+- `QuizPlay` keeps local state: `index`, `selected`, `score`, `finished`. `QuestionCard` locks after the first choice and marks options as right, wrong, or dimmed. A speaker button reads the question (Kurdish parts left out) and each answer in the learning language aloud. After answering, the page scrolls the "next" button into view (on phones it is otherwise under the tab bar); the next question scrolls back up.
 - A progress bar fills as questions are answered. The result screen shows an SVG score ring, a message for ≥80%, ≥50%, or lower, and confetti at ≥80%. It offers retry and back to the list.
 
 ### Profile
@@ -336,22 +338,23 @@ It returns nothing. `AuthContext`'s listener picks up the new session.
 - Logout (here and in the sidebar, via `askLogout` from `AuthContext`) and removing the photo ask first in the confirm dialog; students are reminded of their code. The sidebar shows the student code under the name ("Owner" for the owner).
 
 ### Dashboard (owner only) — `pages/dashboard/`
-Design: `docs/superpowers/specs/2026-10-27-dashboard-library-editor-design.md`. All labels are written in German and Kurdish inline, but only the current app language is shown (`useBi()` → `bi(de, ku)`, `<Bi>`), and the page follows the app direction (RTL for Kurdish).
+Design: `docs/superpowers/specs/2026-10-27-dashboard-library-editor-design.md`. All labels are written in German, Kurdish and English inline, but only the current app language is shown (`useTr()` → `tr(de, ku, en)`, `<Tr>`), and the page follows the app direction (RTL for Kurdish). The owner's toggle has all three languages.
 
 `DashboardLayout` shows a one-line summary (stories · words · questions · students) and a section switch. It passes `{ students, setDirty }` to the sections through the Outlet context.
 
 | Section | What it does |
 |---|---|
-| **Geschichten** (`/dashboard`, `LibraryPage`) | Every story as a card (cover, level, German/Kurdish title) with chips for what is there or missing (sentences, sentences without Kurdish, words, quiz). Level filter chips with counts, title search, and a "Neue Geschichte" card. |
+| **Geschichten** (`/dashboard`, `LibraryPage`) | A Deutsch · English switch (with story counts; remembered as `dashLibrary`) picks the library; the summary line counts it too. Every story of that library as a card (cover, level, German/Kurdish title) with chips for what is there or missing (sentences, sentences without Kurdish, words, quiz). Level filter chips with counts, title search, and a "Neue Geschichte" card that creates a story in that library (`stories/new?lang=en`). |
 | **Story editor** (`/dashboard/stories/:id`, `/new`) | The story, its word list and its quiz, as four tabs (only one section is shown at a time; all stay mounted, so a tab switch keeps unsaved input; the open tab is kept in the URL hash, e.g. `#quiz`): **Details** (cover upload, titles, level buttons, reading time), **Sätze** (one card per sentence: number and buttons on top, German and Kurdish text boxes that grow with the text, move up/down, delete (rows, words and questions with text ask first); "Viele Sätze einfügen" pairs a German box and a Kurdish box line by line, and also reads the old `Deutsch \|\| Kurdisch` lines), **Wörter** (one card per word: word + meaning, example sentences behind "Beispiel"), **Quiz** (compact list; one question opens with answer rows and a radio button for the correct answer; "Fragen aus den Wörtern erstellen" adds "Was bedeutet …?" questions). The tab column stays in view while scrolling (a 2×2 grid above the content on phones), shows counts, and marks tabs that have validation errors; failed saves open the first tab with an error. Every change can be undone step by step ("Rückgängig"; typing in one place within a second is one step, up to 100 steps; saving clears the history, discarding can be undone). Save/undo/discard: a sticky bar on wide screens, round floating buttons above the tab bar on phones and tablets. Long texts (sentences, example sentences, quiz questions and answers) use `AutoText` from `ui.jsx`, a textarea that grows with its text and keeps it on one line (Enter and pasted line breaks become spaces). "Geschichte löschen" (under Details) removes the story with its word list and quiz. |
-| **Schüler** (`StudentsPage`) | The live list from `useStudents()`. Adding a student creates a Firebase account plus profile and shows the new `FIRSTNAME-####` code. Edit changes name, class, or level (the code stays the same). Delete revokes access. |
+| **Schüler** (`StudentsPage`) | The form has a **Lernsprache** select (Deutsch / English); the list shows each student's language. The live list from `useStudents()`. Adding a student creates a Firebase account plus profile and shows the new `FIRSTNAME-####` code. Edit changes name, class, or level (the code stays the same). Delete revokes access. |
 | **Einstellungen** (`SettingsPage`) | The announcement editor only. The former setup box (load built-in content, pre-Firebase migration) and **Sicherung** box (export/import, add missing built-in content, move covers, reset) were removed on purpose: Firestore is the only source of truth, and there is no in-app backup of content. |
 
 How the editor reads and writes (`data/storyBundle.js`, pure and unit-tested):
 - `loadBundle(content, storyId)` builds one object from the story plus its linked word topic and quiz. It prefers the doc whose id equals the story id, else the first with that `storyId`. Others are counted and left alone. Unknown story fields are kept in `extra`.
 - The form edits its own copy. Live Firestore updates don't overwrite it. Unsaved changes = JSON compare with the last saved copy. They trigger a `beforeunload` warning and a confirm dialog on the dashboard's own links. The app uses `BrowserRouter`, so `useBlocker` isn't available and leaving through the main sidebar isn't caught.
-- `validateBundle` blocks saving without a German title, a cover, or a sentence with German text; with a word without meaning; or with a question without text, with fewer than 2 answers, or without a correct answer. Errors are listed at the top and link to their section.
-- `saveBundle` (in `stories.js`) writes everything in one `writeBatch`. Level and titles are copied to the word list and quiz. An empty word list or quiz deletes its document. Existing `order` values are kept, and new documents get `Date.now()`. New stories get their id from `slugId(titleDe)` (slug + 4 random chars), and the URL then changes to `/dashboard/stories/<id>`.
+- The editor shows the story's language as a badge; labels name it ("Englischer Satz" …, `byLang`), and the quiz generator uses its template ("Was bedeutet …?" / "What does … mean?").
+- `validateBundle` blocks saving without a title, a cover, or a sentence with text in the learning language; with a word without meaning; or with a question without text, with fewer than 2 answers, or without a correct answer. Errors are listed at the top and link to their section.
+- `saveBundle` (in `stories.js`) writes everything in one `writeBatch`. Level and titles are copied to the word list and quiz. An empty word list or quiz deletes its document. Existing `order` values are kept, and new documents get `Date.now()`. New stories get their id from `slugId(title)` (slug + 4 random chars), and the URL then changes to `/dashboard/stories/<id>`.
 - Covers are still required and can only be uploaded (shrunk to ≤ 1600 px JPEG, R2 `covers/`).
 
 
@@ -360,7 +363,8 @@ How the editor reads and writes (`data/storyBundle.js`, pure and unit-tested):
 ## 9. Internationalisation and direction
 
 - `src/i18n.js` holds roughly 100 keys grouped by prefix: `nav.*`, `common.*`, `level.*`, `count.*`, `login.*`, `home.*`, `stories.*`, `story.*`, `quiz.*`, `words.*`, `profile.*`, `theme.*`, `welcome.*`, `notFound.*`.
-- The page direction follows the UI language, but **content text always declares its own direction**: German is `dir="ltr" lang="de"` and Kurdish is `dir="rtl" lang="ku"`. Level badges use `dir="ltr"`.
+- `dict` entries have `de`, `ku` and `en`; `src/i18n.test.js` checks that every key has all three with the same placeholders.
+- The page direction follows the UI language, but **content text always declares its own direction**: German/English is `dir="ltr" lang={learning language}` and Kurdish is `dir="rtl" lang="ku"`. Level badges use `dir="ltr"`.
 - Layout uses logical properties (`start/end`, `ms/me`, `ps/pe`, `border-inline-start`) and flips arrow icons with `rtl:rotate-180`.
 
 ---
@@ -396,6 +400,7 @@ How the editor reads and writes (`data/storyBundle.js`, pure and unit-tested):
 | IndexedDB | Firebase Auth session | Firebase SDK |
 | localStorage | `theme` | ThemeContext |
 | localStorage | `lang` | LangContext |
+| localStorage | `dashLibrary` | DashboardLayout (de / en library) |
 | sessionStorage | `welcomed` | Welcome.jsx (cleared on logout) |
 | localStorage (legacy) | `ls-content-v2`/`v1`, `ls-students-v1` | pre-Firebase leftovers; nothing reads them any more (same for `auth`, `avatar:*`, `ls-announcement-v1`). |
 
@@ -420,7 +425,7 @@ Owner edits are shared: every logged-in student sees them live.
 
 ## 13. Known issues / quirks
 
-- ESLint reports 4 known errors (one empty `catch {}` in LangContext, and the fast-refresh rule on the three context files that export hooks).
+- ESLint reports 3 known errors (the fast-refresh rule on the three context files that export hooks).
 - The production bundle is about 870 kB (about 260 kB gzipped), mostly the Firebase SDK. Vite warns about chunk size.
 - Unused Inter and Roboto fonts in `index.html`. `package.json` is named `"react"`. The README is the Vite template.
 - Student codes are short (`NAME` + 4 digits). Firebase Auth rate limiting is the only brute-force protection.

@@ -1,4 +1,5 @@
-// Students live in Firestore: students/{uid} = { code, name, className, level: "A1".."B2" }.
+// Students live in Firestore: students/{uid} = { code, name, className, level: "A1".."B2", learnLang: "de" | "en" }
+// (learnLang missing = German: profiles from before English).
 // Each student is also a Firebase Auth account: email <code>@CODE_EMAIL_DOMAIN, password = code.
 // The owner is the Auth user OWNER_UID (see config.js and firestore.rules).
 import { useEffect, useState } from "react";
@@ -7,6 +8,7 @@ import { createUserWithEmailAndPassword, inMemoryPersistence, initializeAuth, si
 import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
 import { db, firebaseConfig } from "../lib/firebase";
 import { CODE_EMAIL_DOMAIN, OWNER_UID } from "../config";
+import { LEARN_LANGS } from "./languages";
 
 export const codeToEmail = (code) => `${code.trim().toLowerCase()}@${CODE_EMAIL_DOMAIN}`;
 const isOwner = (uid) => uid === OWNER_UID;
@@ -24,7 +26,7 @@ export async function loadProfile(fbUser) {
   if (!data) {
     if (!isOwner(uid)) return null;
     // First owner login: create the owner's profile
-    data = { code: fbUser.email.split("@")[0].toUpperCase(), name: "Teacher", className: "Owner", level: "B2" };
+    data = { code: fbUser.email.split("@")[0].toUpperCase(), name: "Teacher", className: "Owner", level: "B2", learnLang: "de" };
     await setDoc(doc(db, "students", uid), data);
   }
   const avatar = await getDoc(doc(db, "avatars", uid));
@@ -36,6 +38,11 @@ export function saveAvatar(uid, url) {
   const ref = doc(db, "avatars", uid);
   return url ? setDoc(ref, { url }) : deleteDoc(ref);
 }
+
+// A student changes their own learning language (the only profile field they may write, see firestore.rules)
+export const setOwnLearnLang = (uid, learnLang) => updateDoc(doc(db, "students", uid), { learnLang });
+
+const cleanLearnLang = (x) => (LEARN_LANGS.includes(x) ? x : "de");
 
 /* ---------- owner only ---------- */
 
@@ -65,14 +72,14 @@ const getCreatorAuth = () =>
   (creatorAuth ??= initializeAuth(initializeApp(firebaseConfig, "student-creator"), { persistence: inMemoryPersistence }));
 
 // Creates the login account + profile with a new code. Returns the code.
-export async function createStudent({ name, className, level }) {
+export async function createStudent({ name, className, level, learnLang }) {
   const auth = getCreatorAuth();
   for (let tries = 0; tries < 5; tries++) {
     const c = newCode(name);
     try {
       const cred = await createUserWithEmailAndPassword(auth, codeToEmail(c), c);
       await signOut(auth);
-      await setDoc(doc(db, "students", cred.user.uid), { code: c, name, className, level });
+      await setDoc(doc(db, "students", cred.user.uid), { code: c, name, className, level, learnLang: cleanLearnLang(learnLang) });
       return c;
     } catch (err) {
       if (err.code === "auth/email-already-in-use") continue; // code taken, try another
