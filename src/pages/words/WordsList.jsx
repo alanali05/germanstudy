@@ -4,11 +4,12 @@ import WordRow from "../../components/WordRow";
 import PageHeader from "../../components/PageHeader";
 import EmptyState from "../../components/EmptyState";
 import { useLang } from "../../context/LangContext";
-import { findWordTopic } from "../../data/stories";
+import { useLibrary } from "../../data/useLibrary";
 
 export default function WordsList() {
   const { level, topicId } = useParams();
   const { t, tn } = useLang();
+  const { findWordTopic, lang } = useLibrary();
   const story = findWordTopic(level, topicId);
   const [query, setQuery] = useState("");
 
@@ -24,12 +25,12 @@ export default function WordsList() {
   }
 
   const q = query.trim().toLowerCase();
-  const shown = story.words.filter((w) => `${w.wordDe} ${w.wordKu}`.toLowerCase().includes(q));
+  const shown = story.words.filter((w) => `${w.word} ${w.wordKu}`.toLowerCase().includes(q));
 
   return (
     <div>
       <PageHeader
-        title={story.titleDe}
+        title={story.title}
         subtitle={`${story.titleKu}  (${tn("count.words", story.words.length)})`}
         backTo={`/words/${level}`}
       />
@@ -48,7 +49,7 @@ export default function WordsList() {
         {shown.length === 0 ? (
           <p className="p-6 text-center text-muted">{t("words.noMatch", { q: query })}</p>
         ) : (
-          shown.map((w, i) => <WordRow key={`${w.wordDe}-${i}`} entry={w} />)
+          shown.map((w, i) => <WordRow key={`${w.word}-${i}`} entry={w} lang={lang} />)
         )}
       </div>
     </div>

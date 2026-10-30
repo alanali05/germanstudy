@@ -4,11 +4,12 @@ import PageHeader from "../../components/PageHeader";
 import EmptyState from "../../components/EmptyState";
 import { useLang } from "../../context/LangContext";
 import { getLevel } from "../../data/levels";
-import { storiesOf } from "../../data/stories";
+import { useLibrary } from "../../data/useLibrary";
 
 export default function StoriesList() {
   const { level } = useParams();
   const { t } = useLang();
+  const { storiesOf } = useLibrary();
   const lv = getLevel(level);
   const list = storiesOf(level);
 

@@ -2,16 +2,40 @@ import { useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLang } from "../context/LangContext";
 import { getLevel } from "../data/levels";
+import { LEARN_LANGS, learnLangOf } from "../data/languages";
 import Avatar from "../components/Avatar";
+import { useConfirm } from "../context/ConfirmContext";
 import Icon from "../components/Icon";
 import PageHeader from "../components/PageHeader";
+import { toJpeg, uploadImage } from "../services/upload";
 
 export default function Profile() {
-  const { user, logout, setAvatar } = useAuth();
+  const { user, askLogout, setAvatar, setLearnLang } = useAuth();
   const { t } = useLang();
+  const confirm = useConfirm();
   const fileRef = useRef(null);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const level = getLevel((user.level || "A1").toLowerCase());
+  const learnLang = learnLangOf(user);
+  const [langBusy, setLangBusy] = useState(false);
+  const [langError, setLangError] = useState("");
+
+  // Switch the learning language (after asking); stories, words, quizzes and the language toggle follow
+  const switchLearnLang = async (to) => {
+    const language = t(`lang.${to}`);
+    const ok = await confirm({ title: t("profile.switchAsk", { language }), text: t("profile.switchText", { language }), ok: t("profile.switchTo", { language }) });
+    if (!ok) return;
+    setLangBusy(true);
+    setLangError("");
+    try {
+      await setLearnLang(to);
+    } catch (err) {
+      console.error(err);
+      setLangError(t("profile.switchFail"));
+    }
+    setLangBusy(false);
+  };
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
@@ -27,22 +51,20 @@ export default function Profile() {
       return;
     }
     setError("");
+    setBusy(true);
 
-    // Crop to a square and shrink, so it stays small
-    const img = new Image();
-    img.onload = () => {
-      const size = 320;
-      const canvas = document.createElement("canvas");
-      canvas.width = canvas.height = size;
-      const side = Math.min(img.width, img.height);
-      const sx = (img.width - side) / 2;
-      const sy = (img.height - side) / 2;
-      canvas.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, size, size);
-      setAvatar(canvas.toDataURL("image/jpeg", 0.85));
-      URL.revokeObjectURL(img.src);
-    };
-    img.onerror = () => setError(t("profile.openFail"));
-    img.src = URL.createObjectURL(file);
+    // Crop to a small square JPEG, upload it to R2, then save its link
+    toJpeg(file, { size: 320, square: true })
+      .then((blob) => uploadImage("avatar", blob))
+      .then((url) => setAvatar(url))
+      .catch((err) => setError(t(err.message === "OPEN_FAIL" ? "profile.openFail" : "profile.saveFail")))
+      .finally(() => setBusy(false));
+  };
+
+  const removePhoto = async () => {
+    if (!(await confirm({ title: t("profile.removeAsk"), ok: t("profile.remove"), danger: true }))) return;
+    setError("");
+    setAvatar(null).catch(() => setError(t("profile.saveFail")));
   };
 
   return (
@@ -50,10 +72,11 @@ export default function Profile() {
       <PageHeader title={t("profile.title")} />
 
       <div className="glass flex flex-col items-center gap-8 rounded-2xl p-6 sm:flex-row sm:p-10">
-        <div className="relative">
+        <div className="relative shrink-0">
           <Avatar user={user} size={150} />
           <button
             onClick={() => fileRef.current.click()}
+            disabled={busy}
             aria-label={t("profile.change")}
             className="btn-primary absolute bottom-1 end-1 flex h-11 w-11 items-center justify-center !rounded-full"
           >
@@ -84,11 +107,11 @@ export default function Profile() {
           )}
 
           <div className="mt-6 flex flex-wrap justify-center gap-3 sm:justify-start">
-            <button onClick={() => fileRef.current.click()} className="btn-primary px-5 py-3">
+            <button onClick={() => fileRef.current.click()} disabled={busy} className="btn-primary px-5 py-3">
               {t("profile.change")}
             </button>
             {user.avatar && (
-              <button onClick={() => setAvatar(null)} className="btn-ghost px-5 py-3">
+              <button onClick={removePhoto} disabled={busy} className="btn-ghost px-5 py-3">
                 {t("profile.remove")}
               </button>
             )}
@@ -96,7 +119,21 @@ export default function Profile() {
         </div>
       </div>
 
-      <button onClick={logout} className="btn-ghost mt-6 inline-flex items-center gap-2 px-5 py-3">
+      {/* Learning language */}
+      <div className="glass mt-6 flex flex-wrap items-center gap-4 rounded-2xl p-6 sm:px-10">
+        <div className="me-auto">
+          <p className="text-sm text-muted">{t("profile.learning")}</p>
+          <p className="font-display text-2xl font-semibold">{t(`lang.${learnLang}`)}</p>
+        </div>
+        {LEARN_LANGS.filter((l) => l !== learnLang).map((l) => (
+          <button key={l} onClick={() => switchLearnLang(l)} disabled={langBusy} className="btn-ghost px-5 py-3">
+            {t("profile.switchTo", { language: t(`lang.${l}`) })}
+          </button>
+        ))}
+        {langError && <p role="alert" className="w-full text-sm" style={{ color: "var(--bad)" }}>{langError}</p>}
+      </div>
+
+      <button onClick={askLogout} className="btn-ghost mt-6 inline-flex items-center gap-2 px-5 py-3">
         <Icon name="logout" size={18} className="rtl:rotate-180" /> {t("profile.logout")}
       </button>
     </div>

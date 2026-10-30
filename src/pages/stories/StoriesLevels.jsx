@@ -2,10 +2,11 @@ import LevelCard from "../../components/LevelCard";
 import PageHeader from "../../components/PageHeader";
 import { useLang } from "../../context/LangContext";
 import { levels } from "../../data/levels";
-import { storiesOf } from "../../data/stories";
+import { useLibrary } from "../../data/useLibrary";
 
 export default function StoriesLevels() {
   const { t, tn } = useLang();
+  const { storiesOf } = useLibrary();
 
   return (
     <div>

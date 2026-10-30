@@ -4,11 +4,12 @@ import PageHeader from "../../components/PageHeader";
 import EmptyState from "../../components/EmptyState";
 import { useLang } from "../../context/LangContext";
 import { getLevel } from "../../data/levels";
-import { wordTopicsOf } from "../../data/stories";
+import { useLibrary } from "../../data/useLibrary";
 
 export default function WordsTopics() {
   const { level } = useParams();
   const { t, tn } = useLang();
+  const { wordTopicsOf } = useLibrary();
 
   const lv = getLevel(level);
   const topics = wordTopicsOf(level).filter((s) => s.words?.length);
@@ -40,7 +41,7 @@ export default function WordsTopics() {
               <TopicCard
                 index={i + 1}
                 to={`/words/${level}/${s.id}`}
-                title={s.titleDe}
+                title={s.title}
                 subtitle={s.titleKu}
                 info={tn("count.words", s.words.length)}
               />

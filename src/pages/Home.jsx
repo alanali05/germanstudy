@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLang } from "../context/LangContext";
 import { getLevel } from "../data/levels";
 import LevelBadge from "../components/LevelBadge";
-import { getContent } from "../data/stories";
+import { useLibrary } from "../data/useLibrary";
 import { getAnnouncement } from "../data/settings";
 
 export default function Home() {
@@ -14,10 +14,11 @@ export default function Home() {
   const levelId = (user.level || "A1").toLowerCase();
   const level = getLevel(levelId);
 
-  const all = Object.values(getContent().stories).flat();
-  const nStories = all.length;
-  const nQuestions = Object.values(getContent().quizzes).flat().reduce((sum, q) => sum + (q.questions?.length || 0), 0);
-  const nWords = Object.values(getContent().wordTopics).flat().reduce((sum, w) => sum + (w.words?.length || 0), 0);
+  // Counts of the learning language library
+  const { all } = useLibrary();
+  const nStories = all.stories.length;
+  const nQuestions = all.quizzes.reduce((sum, q) => sum + (q.questions?.length || 0), 0);
+  const nWords = all.wordTopics.reduce((sum, w) => sum + (w.words?.length || 0), 0);
 
   const panels = [
     {

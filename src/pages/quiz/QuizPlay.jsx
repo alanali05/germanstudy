@@ -1,15 +1,18 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import QuestionCard from "../../components/QuestionCard";
 import EmptyState from "../../components/EmptyState";
 import { useLang } from "../../context/LangContext";
 import { getLevel } from "../../data/levels";
-import { findQuiz } from "../../data/stories";
+import { useLibrary } from "../../data/useLibrary";
 import PageHeader from "../../components/PageHeader";
+
+const scrollBehavior = () => (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
 
 export default function QuizPlay() {
   const { level, topicId } = useParams();
   const { t } = useLang();
+  const { findQuiz, lang } = useLibrary();
   const lv = getLevel(level);
   const story = findQuiz(level, topicId);
   const quiz = story?.questions || [];
@@ -18,6 +21,13 @@ export default function QuizPlay() {
   const [selected, setSelected] = useState(null); // option index, or null
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
+  const topRef = useRef(null);
+  const nextRef = useRef(null);
+
+  // After answering, scroll the "next" button into view (on phones it is below the screen / under the tab bar)
+  useEffect(() => {
+    if (selected !== null) nextRef.current?.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
+  }, [selected]);
 
   if (!story || quiz.length === 0) {
     return (
@@ -45,6 +55,8 @@ export default function QuizPlay() {
     } else {
       setIndex(index + 1);
       setSelected(null);
+      // the button sits low on phones: bring the new question back into view
+      if (topRef.current?.getBoundingClientRect().top < 0) topRef.current.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
     }
   };
 
@@ -87,9 +99,9 @@ export default function QuizPlay() {
 
   return (
     <div style={{ "--accent": lv.color }} className="mx-auto max-w-2xl">
-      <PageHeader title={story.titleDe} subtitle={story.titleKu} backTo={`/quiz/${level}`} />
+      <PageHeader title={story.title} subtitle={story.titleKu} backTo={`/quiz/${level}`} />
 
-      <div className="mb-2 flex justify-between text-sm text-muted">
+      <div ref={topRef} className="mb-2 flex scroll-mt-4 justify-between text-sm text-muted">
         <span>{t("quiz.questionOf", { i: index + 1, n: total })}</span>
         <span>{t("quiz.score", { n: score })}</span>
       </div>
@@ -102,7 +114,8 @@ export default function QuizPlay() {
 
       <QuestionCard
         key={index}
-        questionDe={q.questionDe}
+        question={q.question}
+        lang={lang}
         questionKu={q.questionKu}
         options={q.options}
         selected={selected}
@@ -111,7 +124,7 @@ export default function QuizPlay() {
       />
 
       {selected !== null && (
-        <button onClick={handleNext} className="btn-primary mt-6 w-full py-4 text-lg">
+        <button ref={nextRef} onClick={handleNext} className="btn-primary mt-6 w-full scroll-mb-28 py-4 text-lg lg:scroll-mb-8">
           {index + 1 === total ? t("quiz.seeScore") : t("quiz.next")}
         </button>
       )}

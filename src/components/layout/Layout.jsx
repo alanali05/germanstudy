@@ -19,7 +19,7 @@ const baseLinks = [
 const ownerLink = { to: "/dashboard", key: "nav.dashboard", icon: "grid" };
 
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user, askLogout } = useAuth();
   const { t } = useLang();
   const { pathname } = useLocation();
   const links = user.role === "owner" ? [...baseLinks, ownerLink] : baseLinks;
@@ -33,7 +33,10 @@ export default function Layout() {
       <Welcome />
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 start-0 z-20 hidden w-72 flex-col border-e border-line bg-card p-6 lg:flex">
-        <div className="px-3 font-display text-2xl font-semibold">{APP_NAME}</div>
+        <div className="flex items-center justify-between gap-3 ps-3">
+          <span className="font-display text-2xl font-semibold">{APP_NAME}</span>
+          <ThemeToggle />
+        </div>
 
         <nav className="mt-10 flex flex-col gap-1">
           {links.map((l) => (
@@ -54,14 +57,14 @@ export default function Layout() {
         </nav>
 
         <div className="mt-auto space-y-3">
-          <div className="flex items-center gap-2"><LangSwitch /><ThemeToggle /></div>
+          <LangSwitch full />
           <div className="flex items-center gap-3 rounded-2xl bg-soft p-3">
             <Avatar user={user} size={44} />
             <div className="min-w-0">
               <p className="truncate font-semibold">{user.name}</p>
-              <p className="truncate text-sm text-muted">{user.className}</p>
+              <p className="truncate text-sm tracking-wide text-muted"><span dir="ltr">{user.role === "owner" ? user.className : user.code}</span></p>
             </div>
-            <button onClick={logout} aria-label={t("profile.logout")} className="ms-auto p-2 text-muted hover:text-fg">
+            <button onClick={askLogout} aria-label={t("profile.logout")} className="ms-auto p-2 text-muted hover:text-fg">
               <Icon name="logout" size={20} className="rtl:rotate-180" />
             </button>
           </div>

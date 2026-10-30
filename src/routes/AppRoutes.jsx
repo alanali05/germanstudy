@@ -1,6 +1,11 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import Dashboard from "../pages/Dashboard";
+import { useContent } from "../data/stories";
+import DashboardLayout from "../pages/dashboard/DashboardLayout";
+import LibraryPage from "../pages/dashboard/LibraryPage";
+import StoryEditorPage from "../pages/dashboard/editor/StoryEditorPage";
+import StudentsPage from "../pages/dashboard/StudentsPage";
+import SettingsPage from "../pages/dashboard/SettingsPage";
 import ProtectedRoute from "./ProtectedRoute";
 import Layout from "../components/layout/Layout";
 
@@ -27,6 +32,9 @@ function OwnerOnly({ children }) {
 }
 
 export default function AppRoutes() {
+  // Subscribing here re-renders every page when the Firestore content changes
+  useContent();
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
@@ -34,7 +42,13 @@ export default function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
           <Route index element={<Home />} />
-          <Route path="dashboard" element={<OwnerOnly><Dashboard /></OwnerOnly>} />
+          <Route path="dashboard" element={<OwnerOnly><DashboardLayout /></OwnerOnly>}>
+            <Route index element={<LibraryPage />} />
+            <Route path="stories/new" element={<StoryEditorPage />} />
+            <Route path="stories/:storyId" element={<StoryEditorPage />} />
+            <Route path="students" element={<StudentsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
           <Route path="profile" element={<Profile />} />
 
           <Route path="stories" element={<StoriesLevels />} />
