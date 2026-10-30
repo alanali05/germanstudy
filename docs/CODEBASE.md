@@ -103,7 +103,8 @@ germanstudy/
     │   ├── StoryCard.jsx      # story list row (cover, number, titles, read time)
     │   ├── TopicCard.jsx      # word-topic / quiz list row
     │   ├── StoryReader.jsx    # story text, tap-word meanings, listen, KU toggle
-    │   ├── QuestionCard.jsx   # one quiz question with option states
+    │   ├── QuestionCard.jsx   # one quiz question with option states and listen buttons
+    │   ├── ConfirmDialog.jsx  # <ConfirmProvider>: the app's "are you sure?" dialog (useConfirm in context/ConfirmContext.js)
     │   ├── WordRow.jsx        # DE | KU vocabulary row with listen button
     │   ├── EmptyState.jsx     # "nothing here" card with link
     │   ├── Avatar.jsx         # image or initials circle
@@ -326,12 +327,13 @@ It returns nothing. `AuthContext`'s listener picks up the new session.
 
 ### Quiz
 - `QuizLevels` → `QuizTopics` → `QuizPlay`.
-- `QuizPlay` keeps local state: `index`, `selected`, `score`, `finished`. `QuestionCard` locks after the first choice and marks options as right, wrong, or dimmed.
+- `QuizPlay` keeps local state: `index`, `selected`, `score`, `finished`. `QuestionCard` locks after the first choice and marks options as right, wrong, or dimmed. A speaker button reads the German question (Kurdish parts left out) and each German answer aloud. After answering, the page scrolls the "next" button into view (on phones it is otherwise under the tab bar); the next question scrolls back up.
 - A progress bar fills as questions are answered. The result screen shows an SVG score ring, a message for ≥80%, ≥50%, or lower, and confetti at ≥80%. It offers retry and back to the list.
 
 ### Profile
 - Upload an avatar: it is validated (image type, ≤ 8 MB), center-cropped to a 320×320 JPEG (`toJpeg`), uploaded to R2 as `avatars/{uid}.jpg` (`uploadImage`), and its link is saved to `avatars/{uid}` with `setAvatar`. Removing it deletes only the Firestore link; the file is overwritten by the next upload.
 - Shows the student code, level chip, and class. Has a logout button.
+- Logout (here and in the sidebar, via `askLogout` from `AuthContext`) and removing the photo ask first in the confirm dialog; students are reminded of their code. The sidebar shows the student code under the name ("Owner" for the owner).
 
 ### Dashboard (owner only) — `pages/dashboard/`
 Design: `docs/superpowers/specs/2026-10-27-dashboard-library-editor-design.md`. All labels are written in German and Kurdish inline, but only the current app language is shown (`useBi()` → `bi(de, ku)`, `<Bi>`), and the page follows the app direction (RTL for Kurdish).
@@ -341,13 +343,13 @@ Design: `docs/superpowers/specs/2026-10-27-dashboard-library-editor-design.md`. 
 | Section | What it does |
 |---|---|
 | **Geschichten** (`/dashboard`, `LibraryPage`) | Every story as a card (cover, level, German/Kurdish title) with chips for what is there or missing (sentences, sentences without Kurdish, words, quiz). Level filter chips with counts, title search, and a "Neue Geschichte" card. |
-| **Story editor** (`/dashboard/stories/:id`, `/new`) | The story, its word list and its quiz, as four tabs (only one section is shown at a time; all stay mounted, so a tab switch keeps unsaved input; the open tab is kept in the URL hash, e.g. `#quiz`): **Details** (cover upload, titles, level buttons, reading time), **Sätze** (one row per sentence, German and Kurdish inputs, move up/down, delete; "Viele Sätze einfügen" pairs a German box and a Kurdish box line by line, and also reads the old `Deutsch \|\| Kurdisch` lines), **Wörter** (word + meaning, example sentences behind "Beispiel"), **Quiz** (compact list; one question opens with answer rows and a radio button for the correct answer; "Fragen aus den Wörtern erstellen" adds "Was bedeutet …?" questions). The tab column stays in view while scrolling (a row above the content on phones), shows counts, and marks tabs that have validation errors; failed saves open the first tab with an error. A sticky save bar appears when something changed. "Geschichte löschen" (under Details) removes the story with its word list and quiz. |
+| **Story editor** (`/dashboard/stories/:id`, `/new`) | The story, its word list and its quiz, as four tabs (only one section is shown at a time; all stay mounted, so a tab switch keeps unsaved input; the open tab is kept in the URL hash, e.g. `#quiz`): **Details** (cover upload, titles, level buttons, reading time), **Sätze** (one row per sentence, German and Kurdish inputs, move up/down, delete (rows, words and questions with text ask first); "Viele Sätze einfügen" pairs a German box and a Kurdish box line by line, and also reads the old `Deutsch \|\| Kurdisch` lines), **Wörter** (word + meaning, example sentences behind "Beispiel"), **Quiz** (compact list; one question opens with answer rows and a radio button for the correct answer; "Fragen aus den Wörtern erstellen" adds "Was bedeutet …?" questions). The tab column stays in view while scrolling (a 2×2 grid above the content on phones), shows counts, and marks tabs that have validation errors; failed saves open the first tab with an error. A sticky save bar appears when something changed. "Geschichte löschen" (under Details) removes the story with its word list and quiz. |
 | **Schüler** (`StudentsPage`) | The live list from `useStudents()`. Adding a student creates a Firebase account plus profile and shows the new `FIRSTNAME-####` code. Edit changes name, class, or level (the code stays the same). Delete revokes access. |
 | **Einstellungen** (`SettingsPage`) | The announcement editor only. The former setup box (load built-in content, pre-Firebase migration) and **Sicherung** box (export/import, add missing built-in content, move covers, reset) were removed on purpose: Firestore is the only source of truth, and there is no in-app backup of content. |
 
 How the editor reads and writes (`data/storyBundle.js`, pure and unit-tested):
 - `loadBundle(content, storyId)` builds one object from the story plus its linked word topic and quiz. It prefers the doc whose id equals the story id, else the first with that `storyId`. Others are counted and left alone. Unknown story fields are kept in `extra`.
-- The form edits its own copy. Live Firestore updates don't overwrite it. Unsaved changes = JSON compare with the last saved copy. They trigger a `beforeunload` warning and a confirm on the dashboard's own links. The app uses `BrowserRouter`, so `useBlocker` isn't available and leaving through the main sidebar isn't caught.
+- The form edits its own copy. Live Firestore updates don't overwrite it. Unsaved changes = JSON compare with the last saved copy. They trigger a `beforeunload` warning and a confirm dialog on the dashboard's own links. The app uses `BrowserRouter`, so `useBlocker` isn't available and leaving through the main sidebar isn't caught.
 - `validateBundle` blocks saving without a German title, a cover, or a sentence with German text; with a word without meaning; or with a question without text, with fewer than 2 answers, or without a correct answer. Errors are listed at the top and link to their section.
 - `saveBundle` (in `stories.js`) writes everything in one `writeBatch`. Level and titles are copied to the word list and quiz. An empty word list or quiz deletes its document. Existing `order` values are kept, and new documents get `Date.now()`. New stories get their id from `slugId(titleDe)` (slug + 4 random chars), and the URL then changes to `/dashboard/stories/<id>`.
 - Covers are still required and can only be uploaded (shrunk to ≤ 1600 px JPEG, R2 `covers/`).

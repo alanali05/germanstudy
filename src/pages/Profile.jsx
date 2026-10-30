@@ -3,13 +3,15 @@ import { useAuth } from "../context/AuthContext";
 import { useLang } from "../context/LangContext";
 import { getLevel } from "../data/levels";
 import Avatar from "../components/Avatar";
+import { useConfirm } from "../context/ConfirmContext";
 import Icon from "../components/Icon";
 import PageHeader from "../components/PageHeader";
 import { toJpeg, uploadImage } from "../services/upload";
 
 export default function Profile() {
-  const { user, logout, setAvatar } = useAuth();
+  const { user, askLogout, setAvatar } = useAuth();
   const { t } = useLang();
+  const confirm = useConfirm();
   const fileRef = useRef(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -39,12 +41,18 @@ export default function Profile() {
       .finally(() => setBusy(false));
   };
 
+  const removePhoto = async () => {
+    if (!(await confirm({ title: t("profile.removeAsk"), ok: t("profile.remove"), danger: true }))) return;
+    setError("");
+    setAvatar(null).catch(() => setError(t("profile.saveFail")));
+  };
+
   return (
     <div>
       <PageHeader title={t("profile.title")} />
 
       <div className="glass flex flex-col items-center gap-8 rounded-2xl p-6 sm:flex-row sm:p-10">
-        <div className="relative">
+        <div className="relative shrink-0">
           <Avatar user={user} size={150} />
           <button
             onClick={() => fileRef.current.click()}
@@ -83,7 +91,7 @@ export default function Profile() {
               {t("profile.change")}
             </button>
             {user.avatar && (
-              <button onClick={() => setAvatar(null).catch(() => setError(t("profile.saveFail")))} className="btn-ghost px-5 py-3">
+              <button onClick={removePhoto} disabled={busy} className="btn-ghost px-5 py-3">
                 {t("profile.remove")}
               </button>
             )}
@@ -91,7 +99,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <button onClick={logout} className="btn-ghost mt-6 inline-flex items-center gap-2 px-5 py-3">
+      <button onClick={askLogout} className="btn-ghost mt-6 inline-flex items-center gap-2 px-5 py-3">
         <Icon name="logout" size={18} className="rtl:rotate-180" /> {t("profile.logout")}
       </button>
     </div>

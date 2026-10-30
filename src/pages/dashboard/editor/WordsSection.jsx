@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
+import { useConfirm } from "../../../context/ConfirmContext";
 import { useBi } from "../bi";
 import { Box } from "../ui";
 
@@ -9,7 +10,20 @@ const EMPTY_WORD = { wordDe: "", wordKu: "", sentenceDe: "", sentenceKu: "" };
 export default function WordsSection({ words, onChange }) {
   const bi = useBi();
   const [open, setOpen] = useState(() => new Set()); // rows whose example sentences are shown
+  const confirm = useConfirm();
   const setRow = (i, k) => (e) => onChange(words.map((x, j) => (j === i ? { ...x, [k]: e.target.value } : x)));
+  // An empty row goes at once; one with text asks first
+  const removeRow = async (i) => {
+    const x = words[i];
+    if (Object.values(x).some((v) => v.trim()) && !(await confirm({
+      title: bi(`Wort ${i + 1} löschen?`, `وشە ${i + 1} بسڕی؟`), // KU: review
+      text: [x.wordDe, x.wordKu].map((v) => v.trim()).filter(Boolean).join(" – "),
+      ok: bi("Löschen", "سڕین"),
+      danger: true,
+    }))) return;
+    onChange(words.filter((_, j) => j !== i));
+    setOpen(new Set());
+  };
   const toggle = (i) => setOpen((s) => {
     const next = new Set(s);
     if (next.has(i)) next.delete(i);
@@ -37,7 +51,7 @@ export default function WordsSection({ words, onChange }) {
               </button>
               <button
                 type="button" aria-label={bi(`Wort ${i + 1} löschen`, `وشە ${i + 1} بسڕە`)}
-                onClick={() => { onChange(words.filter((_, j) => j !== i)); setOpen(new Set()); }}
+                onClick={() => removeRow(i)}
                 className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line text-[var(--bad)]"
               >
                 <Trash2 size={16} />

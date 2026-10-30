@@ -19,7 +19,7 @@ const baseLinks = [
 const ownerLink = { to: "/dashboard", key: "nav.dashboard", icon: "grid" };
 
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user, askLogout } = useAuth();
   const { t } = useLang();
   const { pathname } = useLocation();
   const links = user.role === "owner" ? [...baseLinks, ownerLink] : baseLinks;
@@ -59,9 +59,9 @@ export default function Layout() {
             <Avatar user={user} size={44} />
             <div className="min-w-0">
               <p className="truncate font-semibold">{user.name}</p>
-              <p className="truncate text-sm text-muted">{user.className}</p>
+              <p className="truncate text-sm tracking-wide text-muted"><span dir="ltr">{user.role === "owner" ? user.className : user.code}</span></p>
             </div>
-            <button onClick={logout} aria-label={t("profile.logout")} className="ms-auto p-2 text-muted hover:text-fg">
+            <button onClick={askLogout} aria-label={t("profile.logout")} className="ms-auto p-2 text-muted hover:text-fg">
               <Icon name="logout" size={20} className="rtl:rotate-180" />
             </button>
           </div>

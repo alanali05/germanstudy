@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useConfirm } from "../../context/ConfirmContext";
 import { levels } from "../../data/levels";
 import { createStudent, deleteStudent, updateStudent } from "../../data/students";
 import { SAVE_FAIL, WAIT, useBi } from "./bi";
@@ -11,6 +12,7 @@ const emptyStu = { name: "", className: "", level: "A1" };
 export default function StudentsPage() {
   const bi = useBi();
   const { students } = useOutletContext();
+  const confirm = useConfirm();
   const [f, setF] = useState(emptyStu);
   const [edit, setEdit] = useState(null); // uid of the student being edited
   const [q, setQ] = useState("");
@@ -36,10 +38,14 @@ export default function StudentsPage() {
     }
     setBusy(false);
   };
-  const del = (uid) => {
-    if (window.confirm(bi("Diesen Schüler löschen? Sein Anmeldecode funktioniert dann nicht mehr.", "ئەڤ قوتابیە بهێتە سڕین؟ کۆدێ چوونەژوورا وی ئێدی کار ناکەت."))) {
-      deleteStudent(uid).catch(() => setMsg(SAVE_FAIL));
-    }
+  const del = async (s) => {
+    const ok = await confirm({
+      title: bi(`${s.name} löschen?`, `${s.name} بهێتە سڕین؟`), // KU: review
+      text: bi(`Der Anmeldecode ${s.code} funktioniert dann nicht mehr.`, `کۆدێ چوونەژوورێ ${s.code} ئێدی کار ناکەت.`), // KU: review
+      ok: bi("Löschen", "سڕین"),
+      danger: true,
+    });
+    if (ok) deleteStudent(s.uid).catch(() => setMsg(SAVE_FAIL));
   };
   const startEdit = (s) => {
     setEdit(s.uid); setF({ name: s.name, className: s.className, level: s.level }); setMsg(null);
@@ -66,7 +72,7 @@ export default function StudentsPage() {
         <div className="mb-3"><SearchBox value={q} onChange={setQ} /></div>
         {students.length === 0 && <p className="text-muted">{bi("Noch keine Schüler.", "هێشتا چ قوتابی نینن.")}</p>}
         {students.filter(match).map((s) => (
-          <Row key={s.uid} title={s.name} sub={`${s.code} · ${s.className} · ${s.level}`} onEdit={() => startEdit(s)} onDelete={() => del(s.uid)} />
+          <Row key={s.uid} title={s.name} sub={`${s.code} · ${s.className} · ${s.level}`} onEdit={() => startEdit(s)} onDelete={() => del(s)} />
         ))}
       </Box>
     </>

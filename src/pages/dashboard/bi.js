@@ -8,6 +8,14 @@ export const useBi = () => {
   return (de, ku) => (lang === "de" ? de : ku);
 };
 
+// The "leave with unsaved changes?" question, for useConfirm() (context/ConfirmContext)
+export const LEAVE = (bi) => ({
+  title: bi("Änderungen verwerfen?", "گوهۆڕینان ژێ ببەی؟"), // KU: review
+  text: bi("Was du nicht gespeichert hast, geht verloren.", "ئەوا تە نەپاراستی دێ ژ دەست چیت."), // KU: review
+  ok: bi("Verwerfen", "ژێ ببە"), // KU: review
+  danger: true,
+});
+
 export const OPT = ["(optional)", "(ڤەبژارتی)"];
 // Messages for <Msg>: { ok, text } or { ok, de, ku }
 export const SAVE_FAIL = { ok: false, de: "Speichern fehlgeschlagen. Prüfe die Internetverbindung.", ku: "پاراستن سەرنەکەفت. پەیوەندیا ئینتەرنێتێ بپشکنە." };

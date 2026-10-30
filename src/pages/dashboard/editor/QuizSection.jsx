@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { useConfirm } from "../../../context/ConfirmContext";
 import { generateQuestions } from "../../../data/storyBundle";
 import { useBi } from "../bi";
 import { Box, Msg } from "../ui";
@@ -72,7 +73,18 @@ export default function QuizSection({ questions, words, pool, onChange }) {
   const [msg, setMsg] = useState(null);
   const setQuestion = (i) => (q) => onChange(questions.map((x, j) => (j === i ? q : x)));
   const add = () => { onChange([...questions, emptyQuestion()]); setEditing(questions.length); setMsg(null); };
-  const remove = (i) => { onChange(questions.filter((_, j) => j !== i)); setEditing(null); };
+  const confirm = useConfirm();
+  const remove = async (i) => {
+    const q = questions[i];
+    if ((q.questionDe.trim() || q.options.some((o) => o.trim())) && !(await confirm({
+      title: bi(`Frage ${i + 1} löschen?`, `پرسیار ${i + 1} بسڕی؟`), // KU: review
+      text: q.questionDe.trim() || q.questionKu.trim(),
+      ok: bi("Löschen", "سڕین"),
+      danger: true,
+    }))) return;
+    onChange(questions.filter((_, j) => j !== i));
+    setEditing(null);
+  };
   const generate = () => {
     const made = generateQuestions(words, questions, pool);
     onChange([...questions, ...made]);

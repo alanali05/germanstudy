@@ -1,7 +1,7 @@
 import { useBi } from "../bi";
 
 // The editor's sections as tabs: a column next to the content on wide screens (stays in view while
-// scrolling), a row above it on phones. Arrow keys / Home / End move between tabs (WAI-ARIA tabs pattern).
+// scrolling), a 2×2 grid (phones) or a row of four (tablets) above it. Arrow keys / Home / End move between tabs (WAI-ARIA tabs pattern).
 // tabs: [{ id, label, count, error }]
 export default function SectionTabs({ tabs, active, onSelect }) {
   const bi = useBi();
@@ -21,7 +21,7 @@ export default function SectionTabs({ tabs, active, onSelect }) {
     <div className="flex-[1_1_11rem] lg:sticky lg:top-6 lg:max-w-56">
       <div
         role="tablist" aria-label={bi("Teile der Geschichte", "پشکێن چیرۆکێ")} onKeyDown={onKeyDown}
-        className="glass flex flex-row flex-wrap gap-1 rounded-2xl p-2 lg:flex-col"
+        className="glass grid grid-cols-2 gap-1 rounded-2xl p-2 sm:grid-cols-4 lg:flex lg:flex-col"
       >{/* KU: review */}
         {tabs.map((t) => {
           const on = t.id === active;
@@ -29,10 +29,10 @@ export default function SectionTabs({ tabs, active, onSelect }) {
             <button
               key={t.id} id={`tab-${t.id}`} type="button" role="tab" aria-selected={on} aria-controls={`panel-${t.id}`}
               tabIndex={on ? 0 : -1} onClick={() => onSelect(t.id)}
-              className={`flex min-h-11 flex-1 items-center justify-between gap-3 rounded-xl border-s-4 px-3 font-semibold transition lg:flex-none ${on ? "bg-soft text-fg" : "border-transparent text-muted hover:bg-soft hover:text-fg"}`}
+              className={`flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-xl border-s-4 px-3 font-semibold transition ${on ? "bg-soft text-fg" : "border-transparent text-muted hover:bg-soft hover:text-fg"}`}
               style={on ? { borderInlineStartColor: "var(--brand)" } : undefined}
             >
-              <span>{t.label}</span>
+              <span className="truncate">{t.label}</span>
               <span className="flex items-center gap-2">
                 {t.error && (
                   <span role="img" aria-label={bi("hat Fehler", "هەلە تێدا هەنە")} className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--bad)" }} />

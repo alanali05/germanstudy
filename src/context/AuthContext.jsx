@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "../lib/firebase";
 import { loadProfile, saveAvatar } from "../data/students";
+import { useConfirm } from "./ConfirmContext";
+import { useLang } from "./LangContext";
 
 const AuthContext = createContext(null);
 
@@ -9,6 +11,8 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
+  const { t } = useLang();
 
   useEffect(
     () =>
@@ -36,6 +40,17 @@ export function AuthProvider({ children }) {
     return signOut(auth);
   };
 
+  // Logout button: asks first; students are reminded of the code they need to come back
+  const askLogout = async () => {
+    const ok = await confirm({
+      title: t("profile.logoutAsk"),
+      text: user?.role === "student" ? t("profile.logoutHint", { code: user.code }) : undefined,
+      ok: t("profile.logout"),
+      danger: true,
+    });
+    if (ok) await logout();
+  };
+
   // url = new picture (already uploaded to R2), or null to remove it
   const setAvatar = (url) => {
     setUser((u) => ({ ...u, avatar: url }));
@@ -43,7 +58,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, setAvatar }}>
+    <AuthContext.Provider value={{ user, loading, logout, askLogout, setAvatar }}>
       {children}
     </AuthContext.Provider>
   );

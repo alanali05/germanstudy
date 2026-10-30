@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useConfirm } from "../../../context/ConfirmContext";
 import { parsePaste } from "../../../data/storyBundle";
 import { useBi } from "../bi";
 
@@ -10,8 +11,14 @@ export default function BulkPaste({ hasSentences, onDone, onCancel }) {
   const [ku, setKu] = useState("");
   const r = parsePaste(de, ku);
   const n = r.segments.length;
-  const replace = () => {
-    if (window.confirm(bi("Alle vorhandenen Sätze ersetzen?", "هەمی رستێن هەین بگوهۆڕی؟"))) onDone(r.segments, true); // KU: review
+  const confirm = useConfirm();
+  const replace = async () => {
+    const ok = await confirm({
+      title: bi("Alle vorhandenen Sätze ersetzen?", "هەمی رستێن هەین بگوهۆڕی؟"), // KU: review
+      ok: bi("Ersetzen", "بگوهۆڕە"), // KU: review
+      danger: true,
+    });
+    if (ok) onDone(r.segments, true);
   };
 
   return (

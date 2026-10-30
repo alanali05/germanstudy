@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, ClipboardPaste, Plus, Trash2 } from "lucide-react";
+import { useConfirm } from "../../../context/ConfirmContext";
 import { moveItem } from "../../../data/storyBundle";
 import { useBi } from "../bi";
 import { Box } from "../ui";
@@ -11,7 +12,19 @@ const ICON_BTN = "inline-flex h-11 w-11 shrink-0 items-center justify-center rou
 export default function SentencesSection({ segments, onChange }) {
   const bi = useBi();
   const [pasting, setPasting] = useState(false);
+  const confirm = useConfirm();
   const setRow = (i, k) => (e) => onChange(segments.map((x, j) => (j === i ? { ...x, [k]: e.target.value } : x)));
+  // An empty row goes at once; one with text asks first
+  const removeRow = async (i) => {
+    const s = segments[i];
+    if ((s.de.trim() || s.ku.trim()) && !(await confirm({
+      title: bi(`Satz ${i + 1} löschen?`, `رستە ${i + 1} بسڕی؟`), // KU: review
+      text: s.de.trim() || s.ku.trim(),
+      ok: bi("Löschen", "سڕین"),
+      danger: true,
+    }))) return;
+    onChange(segments.filter((_, j) => j !== i));
+  };
 
   return (
     <Box
@@ -49,7 +62,7 @@ export default function SentencesSection({ segments, onChange }) {
               <button type="button" aria-label={bi("Nach unten", "بۆ خوارێ")} disabled={i === segments.length - 1} onClick={() => onChange(moveItem(segments, i, i + 1))} className={ICON_BTN}>{/* KU: review */}
                 <ArrowDown size={16} />
               </button>
-              <button type="button" aria-label={bi(`Satz ${i + 1} löschen`, `رستە ${i + 1} بسڕە`)} onClick={() => onChange(segments.filter((_, j) => j !== i))} className={`${ICON_BTN} text-[var(--bad)]`}>
+              <button type="button" aria-label={bi(`Satz ${i + 1} löschen`, `رستە ${i + 1} بسڕە`)} onClick={() => removeRow(i)} className={`${ICON_BTN} text-[var(--bad)]`}>
                 <Trash2 size={16} />
               </button>
             </span>

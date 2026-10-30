@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { ArrowLeft, Eye, Trash2 } from "lucide-react";
+import { useConfirm } from "../../../context/ConfirmContext";
 import EmptyState from "../../../components/EmptyState";
 import { deleteBundle, saveBundle, useContent } from "../../../data/stories";
 import { emptyBundle, loadBundle, slugId, validateBundle } from "../../../data/storyBundle";
-import { SAVE_FAIL, useBi } from "../bi";
+import { LEAVE, SAVE_FAIL, useBi } from "../bi";
 import DetailsSection from "./DetailsSection";
 import QuizSection from "./QuizSection";
 import SaveBar from "./SaveBar";
@@ -55,6 +56,7 @@ function EditorForm({ initial, others = 0 }) {
   const navigate = useNavigate();
   const { setDirty } = useOutletContext();
   const { content } = useContent();
+  const confirm = useConfirm();
   const [bundle, setBundle] = useState(initial);
   const [saved, setSaved] = useState(initial);
   const [errors, setErrors] = useState([]);
@@ -89,8 +91,10 @@ function EditorForm({ initial, others = 0 }) {
     });
   };
 
-  const confirmLeave = (e) => {
-    if (dirty && !window.confirm(bi("Änderungen verwerfen?", "گوهۆڕینان ژێ ببەی؟"))) e.preventDefault(); // KU: review
+  const confirmLeave = async (e) => {
+    if (!dirty) return;
+    e.preventDefault();
+    if (await confirm(LEAVE(bi))) navigate("/dashboard");
   };
 
   const save = async () => {
@@ -120,7 +124,13 @@ function EditorForm({ initial, others = 0 }) {
   };
 
   const remove = async () => {
-    if (!window.confirm(bi(`„${saved.titleDe}“ mit Wörtern und Quiz für alle Schüler löschen?`, `«${saved.titleDe}» دگەل وشە و کویزێ بۆ هەمی قوتابیان بهێتە سڕین؟`))) return; // KU: review
+    const ok = await confirm({
+      title: bi(`„${saved.titleDe}“ löschen?`, `«${saved.titleDe}» بسڕی؟`), // KU: review
+      text: bi("Die Geschichte wird mit ihren Wörtern und ihrem Quiz für alle Schüler gelöscht.", "چیرۆک دگەل وشە و کویزا وێ بۆ هەمی قوتابیان دهێتە سڕین."), // KU: review
+      ok: bi("Geschichte löschen", "چیرۆکێ بسڕە"),
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteBundle(saved.id);
     } catch (err) {

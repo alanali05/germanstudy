@@ -20,6 +20,7 @@ export const dict = {
   "common.listen": { de: "Anhören", ku: "گوهدارکرن" },
   "common.stop": { de: "Stopp", ku: "راوەستینە" },
   "common.close": { de: "Schließen", ku: "دابخە" },
+  "common.cancel": { de: "Abbrechen", ku: "هەلوەشاندن" },
   "common.notFoundTitle": { de: "Nicht gefunden", ku: "نەهاتە دیتن" },
   "common.notFoundText": { de: "Dieser Inhalt existiert nicht.", ku: "ئەڤ ناڤەڕۆکە نینە." },
 
@@ -135,6 +136,10 @@ export const dict = {
   "profile.remove": { de: "Foto entfernen", ku: "وێنە ژێببە" },
   "profile.yourCode": { de: "Dein Schülercode", ku: "کۆدێ تە یێ قوتابی" },
   "profile.logout": { de: "Abmelden", ku: "دەرچوون" },
+  // KU: review (the next three)
+  "profile.logoutAsk": { de: "Wirklich abmelden?", ku: "ب راستی دێ دەرکەڤی؟" },
+  "profile.logoutHint": { de: "Zum Anmelden brauchst du wieder deinen Code: {code}", ku: "بۆ چوونەژوورێ دیسا پێدڤی ب کۆدێ خۆ دبی: {code}" },
+  "profile.removeAsk": { de: "Foto entfernen?", ku: "وێنە ژێ ببەی؟" },
   "profile.notImage": { de: "Bitte wähle eine Bilddatei.", ku: "تکایە فایلەکێ وێنە هەلبژێرە." },
   "profile.tooLarge": {
     de: "Das Bild ist zu groß. Wähle eines unter 8 MB.",
