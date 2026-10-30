@@ -38,6 +38,10 @@ const paths = {
   close: <path d="M18 6 6 18M6 6l12 12" />,
   grid: <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />,
   stop: <rect x="6" y="6" width="12" height="12" rx="2" />,
+  play: <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z" />,
+  pause: <path d="M7 4h3v16H7zM14 4h3v16h-3z" />,
+  prev: <path d="M19 20 9 12l10-8zM5 19V5" />,
+  next: <path d="m5 4 10 8-10 8zM19 5v14" />,
 };
 
 export default function Icon({ name, size = 20, className = "" }) {

@@ -1,6 +1,37 @@
 // Small building blocks shared by the dashboard sections
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useBi } from "./bi";
+
+// One-line text that grows taller as it wraps, so long sentences stay readable. Enter and pasted line
+// breaks become spaces (a sentence is one line of text). onValue gets the new string.
+export function AutoText({ value, onValue, className = "", ...props }) {
+  const ref = useRef(null);
+  const fit = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+  };
+  useLayoutEffect(fit, [value]);
+  // Narrower box = more lines: refit when the width changes (not the height, which fit() itself sets)
+  useEffect(() => {
+    let width = 0;
+    const ro = new ResizeObserver(([e]) => {
+      if (e.contentRect.width !== width) { width = e.contentRect.width; fit(); }
+    });
+    ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <textarea
+      ref={ref} rows={1} value={value} {...props}
+      onChange={(e) => onValue(e.target.value.replace(/\s*\n\s*/g, " "))}
+      onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+      className={`resize-none overflow-hidden ${className}`}
+    />
+  );
+}
 
 // Long texts / JSX in the app language
 export const Bi = ({ de, ku }) => useBi()(de, ku);

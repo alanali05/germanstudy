@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { ArrowLeft, Eye, Trash2 } from "lucide-react";
 import { useConfirm } from "../../../context/ConfirmContext";
@@ -14,6 +14,7 @@ import SentencesSection from "./SentencesSection";
 import WordsSection from "./WordsSection";
 
 const TAB_IDS = ["details", "sentences", "words", "quiz"];
+const MAX_UNDO = 100;
 
 // Which section each validation error belongs to, and its text ([de, ku]; n = row number)
 const SECTION_OF = {
@@ -57,10 +58,13 @@ function EditorForm({ initial, others = 0 }) {
   const { setDirty } = useOutletContext();
   const { content } = useContent();
   const confirm = useConfirm();
-  const [bundle, setBundle] = useState(initial);
+  // bundle = the form; history = earlier states for "Rückgängig" (newest last)
+  const [{ bundle, history }, setEdit] = useState({ bundle: initial, history: [] });
+  const lastEdit = useRef({ keys: "", time: 0 });
   const [saved, setSaved] = useState(initial);
   const [errors, setErrors] = useState([]);
   const [msg, setMsg] = useState(null);
+  const clearMsg = useCallback(() => setMsg(null), []);
   const [busy, setBusy] = useState(false);
   // Open tab; kept in the URL hash (#quiz) so a reload stays on it
   const [tab, setTab] = useState(() => {
@@ -69,7 +73,24 @@ function EditorForm({ initial, others = 0 }) {
   });
   const contentRef = useRef(null);
   const dirty = JSON.stringify(bundle) !== JSON.stringify(saved);
-  const update = (patch) => { setBundle((b) => ({ ...b, ...patch })); setMsg(null); };
+  // Every change goes through here and can be undone. Typing in a row counts as one step: edits to the same
+  // part within a second are merged, unless rows were added or removed.
+  const update = (patch) => {
+    const keys = Object.keys(patch).join();
+    const now = Date.now();
+    const typing = lastEdit.current.keys === keys && now - lastEdit.current.time < 1000;
+    lastEdit.current = { keys, time: now };
+    setEdit(({ bundle: b, history: h }) => {
+      const sameRows = Object.keys(patch).every((k) => !Array.isArray(patch[k]) || patch[k].length === b[k]?.length);
+      return { bundle: { ...b, ...patch }, history: typing && sameRows && h.length ? h : [...h.slice(1 - MAX_UNDO), b] };
+    });
+    setMsg(null);
+  };
+  const undo = () => {
+    lastEdit.current = { keys: "", time: 0 };
+    setEdit(({ bundle: b, history: h }) => (h.length ? { bundle: h[h.length - 1], history: h.slice(0, -1) } : { bundle: b, history: h }));
+    setMsg(null);
+  };
 
   useEffect(() => { setDirty(dirty); }, [dirty, setDirty]);
   useEffect(() => () => setDirty(false), [setDirty]);
@@ -118,7 +139,7 @@ function EditorForm({ initial, others = 0 }) {
     }
     setBusy(false);
     setSaved(toSave);
-    setBundle(toSave);
+    setEdit({ bundle: toSave, history: [] });
     if (isNew) return navigate(`/dashboard/stories/${toSave.id}`, { replace: true });
     setMsg({ ok: true, de: "Gespeichert ✓ Die Schüler sehen die Änderungen jetzt.", ku: "هاتە پاراستن ✓ قوتابی ئێستا گوهۆڕینان دبینن." }); // KU: review
   };
@@ -140,10 +161,16 @@ function EditorForm({ initial, others = 0 }) {
     navigate("/dashboard");
   };
 
-  const discard = () => { setBundle(saved); setErrors([]); setMsg(null); };
+  // Back to the last saved state; this too can be undone
+  const discard = () => {
+    lastEdit.current = { keys: "", time: 0 };
+    setEdit(({ bundle: b, history: h }) => ({ bundle: saved, history: [...h.slice(1 - MAX_UNDO), b] }));
+    setErrors([]);
+    setMsg(null);
+  };
 
   return (
-    <div>
+    <div className="pb-24 lg:pb-0">{/* room to scroll the last rows out from under the floating buttons on phones */}
       <Link to="/dashboard" onClick={confirmLeave} className="mb-3 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-muted hover:text-fg">
         <ArrowLeft size={16} className="rtl:rotate-180" /> {bi("Alle Geschichten", "هەمی چیرۆک")}
       </Link>
@@ -212,7 +239,7 @@ function EditorForm({ initial, others = 0 }) {
         </div>
       </div>
 
-      <SaveBar dirty={dirty} busy={busy} msg={msg} onSave={save} onDiscard={discard} />
+      <SaveBar dirty={dirty} busy={busy} msg={msg} canUndo={history.length > 0} onSave={save} onUndo={undo} onDiscard={discard} onClearMsg={clearMsg} />
     </div>
   );
 }

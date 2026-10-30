@@ -3,17 +3,18 @@ import { ArrowDown, ArrowUp, ClipboardPaste, Plus, Trash2 } from "lucide-react";
 import { useConfirm } from "../../../context/ConfirmContext";
 import { moveItem } from "../../../data/storyBundle";
 import { useBi } from "../bi";
-import { Box } from "../ui";
+import { AutoText, Box } from "../ui";
 import BulkPaste from "./BulkPaste";
+import { ICON_BTN, ROW_CARD, ROW_HEAD, ROW_NUM } from "./styles";
 
-const ICON_BTN = "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line disabled:opacity-40";
 
-// One row per sentence: the German sentence and its Kurdish translation, each in its own text direction
+// One card per sentence: number and buttons on top, then the German sentence and its Kurdish translation
+// (stacked on phones, side by side on wide screens), each in its own text direction and growing with the text
 export default function SentencesSection({ segments, onChange }) {
   const bi = useBi();
   const [pasting, setPasting] = useState(false);
   const confirm = useConfirm();
-  const setRow = (i, k) => (e) => onChange(segments.map((x, j) => (j === i ? { ...x, [k]: e.target.value } : x)));
+  const setRow = (i, k) => (v) => onChange(segments.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
   // An empty row goes at once; one with text asks first
   const removeRow = async (i) => {
     const s = segments[i];
@@ -43,29 +44,33 @@ export default function SentencesSection({ segments, onChange }) {
           onCancel={() => setPasting(false)}
         />
       )}
-      <ol className="space-y-2">
+      <ol className="space-y-3">
         {segments.map((s, i) => (
-          <li key={i} className="flex flex-wrap items-center gap-2">
-            <span className="w-6 text-center text-sm font-bold text-muted">{i + 1}</span>
-            <input
-              aria-label={bi(`Satz ${i + 1} Deutsch`, `رستە ${i + 1} ئەلمانی`)} placeholder={bi("Deutscher Satz", "رستەیا ئەلمانی")}
-              className="field !mt-0 min-w-0 flex-[1_1_14rem]" lang="de" dir="ltr" value={s.de} onChange={setRow(i, "de")}
-            />
-            <input
-              aria-label={bi(`Satz ${i + 1} Kurdisch`, `رستە ${i + 1} کوردی`)} placeholder={bi("Kurdische Übersetzung", "وەرگێڕانا کوردی")}
-              className="field !mt-0 min-w-0 flex-[1_1_14rem]" lang="ku" dir="rtl" value={s.ku} onChange={setRow(i, "ku")}
-            />
-            <span className="flex gap-1">
-              <button type="button" aria-label={bi("Nach oben", "بۆ سەری")} disabled={i === 0} onClick={() => onChange(moveItem(segments, i, i - 1))} className={ICON_BTN}>{/* KU: review */}
-                <ArrowUp size={16} />
-              </button>
-              <button type="button" aria-label={bi("Nach unten", "بۆ خوارێ")} disabled={i === segments.length - 1} onClick={() => onChange(moveItem(segments, i, i + 1))} className={ICON_BTN}>{/* KU: review */}
-                <ArrowDown size={16} />
-              </button>
-              <button type="button" aria-label={bi(`Satz ${i + 1} löschen`, `رستە ${i + 1} بسڕە`)} onClick={() => removeRow(i)} className={`${ICON_BTN} text-[var(--bad)]`}>
-                <Trash2 size={16} />
-              </button>
-            </span>
+          <li key={i} className={ROW_CARD}>
+            <div className={ROW_HEAD}>
+              <span className={ROW_NUM}>{i + 1}</span>
+              <span className="ms-auto flex gap-1">
+                <button type="button" aria-label={bi("Nach oben", "بۆ سەری")} disabled={i === 0} onClick={() => onChange(moveItem(segments, i, i - 1))} className={ICON_BTN}>{/* KU: review */}
+                  <ArrowUp size={16} />
+                </button>
+                <button type="button" aria-label={bi("Nach unten", "بۆ خوارێ")} disabled={i === segments.length - 1} onClick={() => onChange(moveItem(segments, i, i + 1))} className={ICON_BTN}>{/* KU: review */}
+                  <ArrowDown size={16} />
+                </button>
+                <button type="button" aria-label={bi(`Satz ${i + 1} löschen`, `رستە ${i + 1} بسڕە`)} onClick={() => removeRow(i)} className={`${ICON_BTN} text-[var(--bad)]`}>
+                  <Trash2 size={16} />
+                </button>
+              </span>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <AutoText
+                aria-label={bi(`Satz ${i + 1} Deutsch`, `رستە ${i + 1} ئەلمانی`)} placeholder={bi("Deutscher Satz", "رستەیا ئەلمانی")}
+                className="field !mt-0" lang="de" dir="ltr" value={s.de} onValue={setRow(i, "de")}
+              />
+              <AutoText
+                aria-label={bi(`Satz ${i + 1} Kurdisch`, `رستە ${i + 1} کوردی`)} placeholder={bi("Kurdische Übersetzung", "وەرگێڕانا کوردی")}
+                className="field !mt-0" lang="ku" dir="rtl" value={s.ku} onValue={setRow(i, "ku")}
+              />
+            </div>
           </li>
         ))}
       </ol>

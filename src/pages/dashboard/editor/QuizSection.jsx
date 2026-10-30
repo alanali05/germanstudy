@@ -3,7 +3,7 @@ import { Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { useConfirm } from "../../../context/ConfirmContext";
 import { generateQuestions } from "../../../data/storyBundle";
 import { useBi } from "../bi";
-import { Box, Msg } from "../ui";
+import { AutoText, Box, Msg } from "../ui";
 
 const emptyQuestion = () => ({ questionDe: "", questionKu: "", options: ["", ""], correctAnswer: 0 });
 
@@ -11,7 +11,7 @@ const emptyQuestion = () => ({ questionDe: "", questionKu: "", options: ["", ""]
 function QuestionEditor({ n, q, onChange, onDelete, onClose }) {
   const bi = useBi();
   const set = (patch) => onChange({ ...q, ...patch });
-  const setOption = (i) => (e) => set({ options: q.options.map((o, j) => (j === i ? e.target.value : o)) });
+  const setOption = (i) => (v) => set({ options: q.options.map((o, j) => (j === i ? v : o)) });
   const removeOption = (i) => set({
     options: q.options.filter((_, j) => j !== i),
     correctAnswer: i === q.correctAnswer ? 0 : i < q.correctAnswer ? q.correctAnswer - 1 : q.correctAnswer,
@@ -21,13 +21,13 @@ function QuestionEditor({ n, q, onChange, onDelete, onClose }) {
     <fieldset className="rounded-xl border p-3" style={{ borderColor: "var(--brand)" }}>
       <legend className="px-1 text-sm font-bold">{bi(`Frage ${n}`, `پرسیار ${n}`)}</legend>
       <div className="grid gap-2 sm:grid-cols-2">
-        <input
+        <AutoText
           aria-label={bi("Frage (Deutsch)", "پرسیار (ئەلمانی)")} placeholder={bi("Frage (Deutsch)", "پرسیار (ئەلمانی)")}
-          className="field !mt-0" lang="de" dir="ltr" value={q.questionDe} onChange={(e) => set({ questionDe: e.target.value })}
+          className="field !mt-0" lang="de" dir="ltr" value={q.questionDe} onValue={(v) => set({ questionDe: v })}
         />
-        <input
+        <AutoText
           aria-label={bi("Frage (Kurdisch)", "پرسیار (کوردی)")} placeholder={bi("Frage (Kurdisch)", "پرسیار (کوردی)")}
-          className="field !mt-0" lang="ku" dir="rtl" value={q.questionKu} onChange={(e) => set({ questionKu: e.target.value })}
+          className="field !mt-0" lang="ku" dir="rtl" value={q.questionKu} onValue={(v) => set({ questionKu: v })}
         />
       </div>
       <p className="mt-3 text-sm text-muted">{bi("Antworten – den Kreis bei der richtigen Antwort anklicken.", "بەرسڤ – ل سەر بازنەیا بەرسڤا درست کلیک بکە.")}</p>{/* KU: review */}
@@ -41,7 +41,7 @@ function QuestionEditor({ n, q, onChange, onDelete, onClose }) {
               type="radio" name={`correct-${n}`} checked={i === q.correctAnswer} onChange={() => set({ correctAnswer: i })}
               aria-label={bi(`Antwort ${i + 1} ist richtig`, `بەرسڤا ${i + 1} درستە`)} className="h-5 w-5 shrink-0 accent-[var(--brand)]"
             />{/* KU: review */}
-            <input aria-label={bi(`Antwort ${i + 1}`, `بەرسڤ ${i + 1}`)} className="min-h-11 min-w-0 flex-1 bg-transparent outline-none" dir="auto" value={o} onChange={setOption(i)} />
+            <AutoText aria-label={bi(`Antwort ${i + 1}`, `بەرسڤ ${i + 1}`)} className="min-w-0 flex-1 bg-transparent py-2.5 outline-none" dir="auto" value={o} onValue={setOption(i)} />
             {q.options.length > 2 && (
               <button type="button" aria-label={bi(`Antwort ${i + 1} entfernen`, `بەرسڤا ${i + 1} لابە`)} onClick={() => removeOption(i)} className="p-2 text-muted hover:text-fg">{/* KU: review */}
                 <X size={16} />

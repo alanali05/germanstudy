@@ -115,6 +115,11 @@ body {
   text-decoration-thickness: 2px; text-underline-offset: 6px; transition: background .15s;
 }
 .tap-word:hover { background: var(--soft); }
+
+/* Story reader: the sentence being read aloud, and the floating controls */
+.seg { border-radius: .75rem; transition: background-color .25s, box-shadow .25s; scroll-margin: 1rem 0 11rem; }
+.seg-reading { background: color-mix(in srgb, var(--brand) 13%, transparent); box-shadow: inset 4px 0 0 var(--brand); }
+.reader-float { background: var(--card); border: 1px solid var(--brand); box-shadow: var(--shadow-lg); animation: slideUp .25s cubic-bezier(.2,.8,.2,1); }
 .tap-word[aria-pressed="true"] { background: var(--hl); }
 
 :focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }

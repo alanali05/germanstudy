@@ -21,6 +21,12 @@ export const dict = {
   "common.stop": { de: "Stopp", ku: "راوەستینە" },
   "common.close": { de: "Schließen", ku: "دابخە" },
   "common.cancel": { de: "Abbrechen", ku: "هەلوەشاندن" },
+  // KU: review (the next five)
+  "common.pause": { de: "Pause", ku: "راگرتن" },
+  "common.resume": { de: "Weiter", ku: "بەردەوام بە" },
+  "reader.prev": { de: "Vorheriger Satz", ku: "رستەیا بەری" },
+  "reader.next": { de: "Nächster Satz", ku: "رستەیا پاشتر" },
+  "reader.sentence": { de: "Satz {i} von {n}", ku: "رستە {i} ژ {n}" },
   "common.notFoundTitle": { de: "Nicht gefunden", ku: "نەهاتە دیتن" },
   "common.notFoundText": { de: "Dieser Inhalt existiert nicht.", ku: "ئەڤ ناڤەڕۆکە نینە." },
 
