@@ -154,27 +154,50 @@ export function moveItem(list, from, to) {
   return out;
 }
 
-// Pasted sentences: lines in the learning language and Kurdish lines, paired by line (blank lines skipped).
-// If every line of the first box contains "||", the old one-box format "Satz || Kurdisch" is used instead.
-// unmatched = indexes of rows where one side is missing.
-export function parsePaste(targetText, kuText) {
-  const lines = (t) => str(t).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  const target = lines(targetText);
-  let segments;
-  let kuCount;
-  if (target.length && target.every((l) => l.includes("||"))) {
-    segments = target.map((l) => {
-      const [d, ...rest] = l.split("||");
-      return { text: d.trim(), ku: rest.join("||").trim() };
-    });
-    kuCount = segments.filter((x) => x.ku).length;
-  } else {
-    const ku = lines(kuText);
-    segments = Array.from({ length: Math.max(target.length, ku.length) }, (_, i) => ({ text: target[i] || "", ku: ku[i] || "" }));
-    kuCount = ku.length;
+/// Arabic-script letters (Kurdish) and Latin letters (German / English)
+const KU_LETTER = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/;
+const LATIN_LETTER = /\p{Script=Latin}/u;
+
+// Pasted "text || Kurdish" lines (sentences or words). Every non-blank line must be: learning-language text,
+// exactly one "||", then the Kurdish text. rows: the good lines; errors: one per bad line, with its kind
+// (missing, many, emptyTarget, emptyKu, swapped, targetScript, kuScript). line = 1-based line in the pasted text.
+export function parsePairs(text) {
+  const rows = [];
+  const errors = [];
+  str(text).split(/\r?\n/).forEach((raw, i) => {
+    if (!raw.trim()) return;
+    const line = i + 1;
+    const kind = (() => {
+      if (!raw.includes("||")) return "missing";
+      if (raw.match(/\|/g).length > 2) return "many";
+      const [left, right] = raw.split("||").map((p) => p.trim());
+      if (!left) return "emptyTarget";
+      if (!right) return "emptyKu";
+      if (KU_LETTER.test(left)) return KU_LETTER.test(right) ? "targetScript" : "swapped";
+      if (!KU_LETTER.test(right) && LATIN_LETTER.test(right)) return "kuScript";
+      rows.push({ line, left, right });
+      return null;
+    })();
+    if (kind) errors.push({ line, kind });
+  });
+  return { rows, errors };
+}
+
+// A word without its leading article ("Der Nachtisch" -> "Nachtisch", "To book" -> "book")
+const ARTICLE = { de: /^(der|die|das|ein|eine)\s+/i, en: /^(the|a|an|to)\s+/i };
+export const bareWord = (word, lang = "de") => trim(word).replace(ARTICLE[lang] || ARTICLE.de, "");
+
+// The first story sentence that contains a word, as the word's example: { sentence, sentenceKu } or null.
+// A whole word first, then the start of a longer word ("book" finds "booked"); case and article don't matter.
+export function findExample(word, segments, lang = "de") {
+  const w = bareWord(word, lang);
+  if (!w) return null;
+  const start = `(?<![\\p{L}\\p{N}])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`;
+  for (const re of [new RegExp(`${start}(?![\\p{L}\\p{N}])`, "iu"), new RegExp(start, "iu")]) {
+    const s = segments.find((x) => re.test(str(x.text)));
+    if (s) return { sentence: s.text, sentenceKu: s.ku };
   }
-  const unmatched = segments.flatMap((x, i) => (x.text && x.ku ? [] : [i]));
-  return { segments, targetCount: target.length, kuCount, unmatched };
+  return null;
 }
 
 const shuffle = (list, rng) => {

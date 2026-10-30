@@ -14,13 +14,15 @@ export function AutoText({ value, onValue, className = "", ...props }) {
     el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
   };
   useLayoutEffect(fit, [value]);
-  // Narrower box = more lines: refit when the width changes (not the height, which fit() itself sets)
+  // Narrower box = more lines: refit when the width changes (not the height, which fit() itself sets),
+  // and once the web fonts have loaded (they wrap differently from the fallback font)
   useEffect(() => {
     let width = 0;
     const ro = new ResizeObserver(([e]) => {
       if (e.contentRect.width !== width) { width = e.contentRect.width; fit(); }
     });
     ro.observe(ref.current);
+    document.fonts?.ready.then(fit);
     return () => ro.disconnect();
   }, []);
   return (

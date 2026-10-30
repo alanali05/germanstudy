@@ -41,9 +41,12 @@ export default function SentencesSection({ lang, segments, onChange }) {
     >
       {pasting && (
         <BulkPaste
-          lang={lang}
-          hasSentences={segments.length > 0}
-          onDone={(rows, replace) => { onChange(replace ? rows : [...segments, ...rows]); setPasting(false); }}
+          kind="sentences" lang={lang} hasRows={segments.length > 0}
+          onDone={(rows, replace) => {
+            const pasted = rows.map((r) => ({ text: r.left, ku: r.right }));
+            onChange(replace ? pasted : [...segments, ...pasted]);
+            setPasting(false);
+          }}
           onCancel={() => setPasting(false)}
         />
       )}

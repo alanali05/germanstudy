@@ -241,7 +241,7 @@ function EditorForm({ initial, others = 0 }) {
             <SentencesSection lang={bundle.lang} segments={bundle.segments} onChange={(segments) => update({ segments })} />
           </div>
           <div role="tabpanel" id="panel-words" aria-labelledby="tab-words" hidden={tab !== "words"}>
-            <WordsSection lang={bundle.lang} words={bundle.words} onChange={(words) => update({ words })} />
+            <WordsSection lang={bundle.lang} words={bundle.words} segments={bundle.segments} onChange={(words) => update({ words })} />
           </div>
           <div role="tabpanel" id="panel-quiz" aria-labelledby="tab-quiz" hidden={tab !== "quiz"}>
             <QuizSection lang={bundle.lang} questions={bundle.questions} words={bundle.words} pool={pool} onChange={(questions) => update({ questions })} />

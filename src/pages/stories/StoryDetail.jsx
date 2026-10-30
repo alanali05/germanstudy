@@ -9,7 +9,7 @@ import { useLibrary } from "../../data/useLibrary";
 export default function StoryDetail() {
   const { level, storyId } = useParams();
   const { t } = useLang();
-  const { findStory, linkedQuizzes, linkedWordTopics, linkedWords, lang } = useLibrary();
+  const { findStory, storiesOf, linkedQuizzes, linkedWordTopics, linkedWords, lang } = useLibrary();
   const location = useLocation();
   const lv = getLevel(level);
   const story = findStory(level, storyId);
@@ -25,8 +25,9 @@ export default function StoryDetail() {
     );
   }
 
-  // Story number: comes from the card the user clicked (or from the data)
-  const num = location.state?.index ?? story.number ?? story.order ?? null;
+  // Story number: from the card the user clicked, else the story's place in its level list (the same number
+  // the card shows). Not "order": for stories made in the dashboard that is a timestamp.
+  const num = location.state?.index ?? storiesOf(level).findIndex((s) => s.id === story.id) + 1;
 
   const words = linkedWordTopics(story.id);
   const quizzes = linkedQuizzes(story.id);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  bundleToDocs, cleanBundle, emptyBundle, generateQuestions, loadBundle, moveItem, parsePaste, slugId, storyHealth, validateBundle,
+  bundleToDocs, cleanBundle, emptyBundle, generateQuestions, loadBundle, bareWord, findExample, moveItem, parsePairs, slugId, storyHealth, validateBundle,
 } from "./storyBundle";
 
 const levels = () => ({ a1: [], a2: [], b1: [], b2: [] });
@@ -157,23 +157,82 @@ describe("bundleToDocs", () => {
   });
 });
 
-describe("parsePaste", () => {
-  it("pairs sentence lines with Kurdish lines and skips blank lines", () => {
-    expect(parsePaste("Eins.\n\n Zwei. \n", "ئێک.\nدوو.")).toEqual({
-      segments: [{ text: "Eins.", ku: "ئێک." }, { text: "Zwei.", ku: "دوو." }], targetCount: 2, kuCount: 2, unmatched: [],
+describe("parsePairs", () => {
+  it("reads 'text || Kurdish' lines, skips blank lines and keeps line numbers", () => {
+    expect(parsePairs("good morning, how are you? || سپێدە باش، تو یێ چەوانی؟\n\n  thanks ||سپاس  \n")).toEqual({
+      rows: [
+        { line: 1, left: "good morning, how are you?", right: "سپێدە باش، تو یێ چەوانی؟" },
+        { line: 3, left: "thanks", right: "سپاس" },
+      ],
+      errors: [],
     });
   });
 
-  it("reports rows without a partner", () => {
-    const r = parsePaste("Eins.\nZwei.\nDrei.", "ئێک.");
-    expect(r.segments).toHaveLength(3);
-    expect(r.unmatched).toEqual([1, 2]);
+  it("reports one error per bad line", () => {
+    const { rows, errors } = parsePairs([
+      "Hallo || سڵاو", //        1 ok
+      "Hallo سڵاو", //           2 no ||
+      "Hallo | سڵاو", //         3 a single | is not a separator
+      "a || ب || c", //          4 two separators
+      "a ||| ب", //              5 three bars
+      " || سڵاو", //             6 nothing before ||
+      "Hallo || ", //            7 nothing after ||
+      "سڵاو || Hallo", //        8 Kurdish first
+      "Hallo سڵاو || سڵاو", //   9 Kurdish letters on the left
+      "Hallo || Hello", //       10 no Kurdish letters on the right
+      "Müller, 10 || 10", //     11 ok: no letters at all on the right is fine
+    ].join("\n"));
+    expect(rows.map((r) => r.line)).toEqual([1, 11]);
+    expect(errors).toEqual([
+      { line: 2, kind: "missing" }, { line: 3, kind: "missing" }, { line: 4, kind: "many" }, { line: 5, kind: "many" },
+      { line: 6, kind: "emptyTarget" }, { line: 7, kind: "emptyKu" }, { line: 8, kind: "swapped" },
+      { line: 9, kind: "targetScript" }, { line: 10, kind: "kuScript" },
+    ]);
   });
 
-  it("reads the old 'Deutsch || Kurdisch' format", () => {
-    expect(parsePaste("Hallo. || سڵاو.\nJa || بەلێ || باشە", "").segments).toEqual([
-      { text: "Hallo.", ku: "سڵاو." }, { text: "Ja", ku: "بەلێ || باشە" },
-    ]);
+  it("handles Windows line breaks and empty input", () => {
+    expect(parsePairs("a || ب\r\nc || د").rows.map((r) => r.line)).toEqual([1, 2]);
+    expect(parsePairs("")).toEqual({ rows: [], errors: [] });
+    expect(parsePairs(undefined)).toEqual({ rows: [], errors: [] });
+  });
+});
+
+describe("bareWord", () => {
+  it("drops a leading article or 'to'", () => {
+    expect(bareWord("Der Nachtisch", "de")).toBe("Nachtisch");
+    expect(bareWord("eine Zutat", "de")).toBe("Zutat");
+    expect(bareWord("To book", "en")).toBe("book");
+    expect(bareWord("the station", "en")).toBe("station");
+    expect(bareWord("to", "en")).toBe("to");
+    expect(bareWord(" Gemeinsam ", "de")).toBe("Gemeinsam");
+  });
+});
+
+describe("findExample", () => {
+  const segs = [
+    { text: "She had booked the ticket.", ku: "وێ بلیت حجز کربوو." },
+    { text: "Wir kochen gemeinsam das Öl.", ku: "ئەم پێکڤە روونی چێدکەین." },
+    { text: "The binoculars are new.", ku: "دووربین..." },
+    { text: "Paper and cardboard go in the blue bin.", ku: "کاغەز..." },
+  ];
+
+  it("finds the first sentence with the word, ignoring case and article", () => {
+    expect(findExample("Gemeinsam", segs, "de")).toEqual({ sentence: "Wir kochen gemeinsam das Öl.", sentenceKu: "ئەم پێکڤە روونی چێدکەین." });
+    expect(findExample("Das Öl", segs, "de").sentence).toBe("Wir kochen gemeinsam das Öl.");
+  });
+
+  it("prefers a whole word over the start of a longer word", () => {
+    expect(findExample("Bin", segs, "en").sentence).toBe("Paper and cardboard go in the blue bin.");
+  });
+
+  it("falls back to the start of a longer word", () => {
+    expect(findExample("To book", segs, "en").sentence).toBe("She had booked the ticket.");
+  });
+
+  it("does not match inside a word, and returns null when nothing matches", () => {
+    expect(findExample("cket", segs, "en")).toBeNull();
+    expect(findExample("", segs, "en")).toBeNull();
+    expect(findExample("a.b", [{ text: "axb", ku: "" }], "en")).toBeNull();
   });
 });
 
