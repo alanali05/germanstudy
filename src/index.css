@@ -1,26 +1,26 @@
 @import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
-/* ---------- Theme: cyan brand, calm neutrals, soft shadows ---------- */
+/* ---------- Theme: blue brand with a purple second color, calm neutrals, soft shadows ---------- */
 html[data-theme="light"] {
-  --bg: #f3f7f4;  --card: #ffffff;  --fg: #0b1510;  --muted: #4a5b52;  --faint: #86948c;
-  --line: #dce6df; --soft: #ebf2ed;
-  --brand: #4ade80; --on-brand: #052e16; --link: #15803d;
+  --bg: #ffffff;  --card: #ffffff;  --fg: #0f1530;  --muted: #5b6482;  --faint: #8a93ad;
+  --line: #e1e6f5; --soft: #f1f4ff;
+  --brand: #3b6ef5; --purple: #8b5cf6; --on-brand: #ffffff; --link: #3b6ef5;
   --ok: #15803d; --okbg: #e3f6ea; --bad: #b91c1c; --badbg: #fdeaea; --hl: #fff0a8;
-  --shadow: 0 1px 2px rgba(11,21,16,.05), 0 10px 28px -14px rgba(11,21,16,.2);
-  --shadow-lg: 0 2px 4px rgba(11,21,16,.06), 0 20px 40px -14px rgba(34,197,94,.45);
-  --glow1: rgba(74,222,128,.22); --glow2: rgba(56,189,248,.10);
+  --shadow: 0 1px 2px rgba(15,21,48,.05), 0 10px 28px -14px rgba(15,21,48,.18);
+  --shadow-lg: 0 2px 4px rgba(15,21,48,.06), 0 20px 40px -14px rgba(59,110,245,.4);
+  --glow1: rgba(59,110,245,.08); --glow2: rgba(139,92,246,.07);
   --accent: var(--brand);
   color-scheme: light;
 }
 :root, html[data-theme="dark"] {
-  --bg: #030712;  --card: #0d1522;  --fg: #f1f5f9;  --muted: #9aa8b8;  --faint: #6b7a8c;
-  --line: #1c2837; --soft: #131d2b;
-  --brand: #4ade80; --on-brand: #052e16; --link: #86efac;
+  --bg: #05070d;  --card: #0a0f1d;  --fg: #e7ecfa;  --muted: #96a0bd;  --faint: #646e8c;
+  --line: #17203a; --soft: #0c1324;
+  --brand: #6c97ff; --purple: #a58bfa; --on-brand: #05070d; --link: #6c97ff;
   --ok: #5fd08a; --okbg: #0f2a1a; --bad: #ff8f8f; --badbg: #331818; --hl: #4d4520;
   --shadow: 0 12px 32px -16px rgba(0,0,0,.9);
-  --shadow-lg: 0 22px 44px -16px rgba(74,222,128,.4);
-  --glow1: rgba(74,222,128,.10); --glow2: rgba(56,189,248,.07);
+  --shadow-lg: 0 22px 44px -16px rgba(108,151,255,.4);
+  --glow1: rgba(108,151,255,.09); --glow2: rgba(165,139,250,.07);
   --accent: var(--brand);
   color-scheme: dark;
 }
@@ -55,15 +55,15 @@ body {
 .panel-quiz    { background: linear-gradient(135deg, color-mix(in srgb, #f59e0b 16%, var(--card)), var(--card) 70%); }
 .panel-words   { background: linear-gradient(135deg, color-mix(in srgb, #22c55e 16%, var(--card)), var(--card) 70%); }
 
-/* ---------- Buttons: cyan with shadow ---------- */
+/* ---------- Buttons: blue to purple with shadow ---------- */
 .btn-primary {
-  background: linear-gradient(135deg, #bbf7d0, #4ade80 55%, #22c55e); color: var(--on-brand); font-weight: 700;
+  background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 55%, var(--purple)) 55%, var(--purple)); color: var(--on-brand); font-weight: 700;
   border-radius: 0.85rem; min-height: 46px; text-align: center; cursor: pointer;
-  box-shadow: 0 10px 24px -6px rgba(34,197,94,.7), 0 2px 0 rgba(255,255,255,.35) inset;
+  box-shadow: 0 10px 24px -6px color-mix(in srgb, var(--brand) 60%, transparent), 0 2px 0 rgba(255,255,255,.25) inset;
   transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
 }
-.btn-primary:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: 0 18px 34px -8px rgba(34,197,94,.85), 0 2px 0 rgba(255,255,255,.45) inset; }
-.btn-primary:active { transform: translateY(0) scale(.98); box-shadow: 0 4px 10px -4px rgba(34,197,94,.7); }
+.btn-primary:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: 0 18px 34px -8px color-mix(in srgb, var(--brand) 75%, transparent), 0 2px 0 rgba(255,255,255,.35) inset; }
+.btn-primary:active { transform: translateY(0) scale(.98); box-shadow: 0 4px 10px -4px color-mix(in srgb, var(--brand) 60%, transparent); }
 .btn-primary:disabled { opacity: .6; transform: none; }
 .btn-ghost {
   border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer;
@@ -133,7 +133,10 @@ body {
 @keyframes welcomeIn { from { opacity: 0; transform: translateY(24px) scale(.94); } to { opacity: 1; transform: none; } }
 @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(.97); } to { opacity: 1; transform: none; } }
-@keyframes pulseGlow { 0%,100% { box-shadow: 0 10px 24px -6px rgba(34,197,94,.7), 0 0 0 0 rgba(74,222,128,.45); } 50% { box-shadow: 0 10px 24px -6px rgba(34,197,94,.7), 0 0 0 12px rgba(74,222,128,0); } }
+@keyframes pulseGlow {
+  0%,100% { box-shadow: 0 10px 24px -6px color-mix(in srgb, var(--brand) 60%, transparent), 0 0 0 0 color-mix(in srgb, var(--brand) 45%, transparent); }
+  50% { box-shadow: 0 10px 24px -6px color-mix(in srgb, var(--brand) 60%, transparent), 0 0 0 12px transparent; }
+}
 @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
 @keyframes drain { from { width: 100%; } to { width: 0; } }
 @keyframes fall { from { transform: translateY(-20px) rotate(0); opacity: 1; } to { transform: translateY(420px) rotate(540deg); opacity: 0; } }
@@ -148,20 +151,20 @@ body {
 .rise { animation: fadeUp .6s ease backwards; }
 
 .welcome { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 1.5rem;
-  background: radial-gradient(700px 500px at 20% 10%, rgba(74,222,128,.35), transparent 60%), radial-gradient(700px 500px at 90% 90%, rgba(56,189,248,.22), transparent 60%), #030712;
+  background: radial-gradient(700px 500px at 20% 10%, rgba(108,151,255,.32), transparent 60%), radial-gradient(700px 500px at 90% 90%, rgba(165,139,250,.24), transparent 60%), #05070d;
   color: #fff; }
 .welcome.leaving { animation: fadeOut .45s ease forwards; }
 .welcome-card { text-align: center; max-width: 30rem; animation: welcomeIn .7s cubic-bezier(.2,.8,.2,1) both; }
 .wave { display: inline-block; transform-origin: 70% 70%; animation: wave 2.2s ease .5s 1, floaty 3s ease-in-out 2.7s infinite; font-size: 4.5rem; }
-.drain { height: 4px; border-radius: 4px; background: #4ade80; animation: drain 3s linear forwards; }
+.drain { height: 4px; border-radius: 4px; background: linear-gradient(90deg, #6c97ff, #a58bfa); animation: drain 3s linear forwards; }
 
 .cta-pulse { animation: pulseGlow 2.4s ease-in-out infinite; }
 .meaning-card { position: fixed; z-index: 45; left: 1rem; right: 1rem; bottom: 6rem; background: var(--card); color: var(--fg);
-  border: 1px solid var(--brand); border-radius: 1.25rem; padding: 1.25rem; box-shadow: var(--shadow-lg), 0 0 0 1px rgba(74,222,128,.15);
+  border: 1px solid var(--brand); border-radius: 1.25rem; padding: 1.25rem; box-shadow: var(--shadow-lg), 0 0 0 1px color-mix(in srgb, var(--brand) 15%, transparent);
   animation: slideUp .3s cubic-bezier(.2,.8,.2,1) backwards; }
 .confirm-dialog { margin: auto; padding: 0; width: min(28rem, calc(100% - 2rem)); background: var(--card); color: var(--fg);
   border: 1px solid var(--line); border-radius: 1.25rem; box-shadow: var(--shadow-lg); animation: slideUp .25s cubic-bezier(.2,.8,.2,1); }
-.confirm-dialog::backdrop { background: rgb(3 7 18 / .6); backdrop-filter: blur(3px); }
+.confirm-dialog::backdrop { background: rgb(5 7 13 / .6); backdrop-filter: blur(3px); }
 @media (min-width: 1024px) { .meaning-card { left: auto; right: 2rem; bottom: 2rem; width: 26rem; } }
 
 /* ---------- Level components (A1, A2, B1, B2) ---------- */
