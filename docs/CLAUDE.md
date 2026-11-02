@@ -70,7 +70,7 @@ npm test          # Vitest unit tests (src/data/*.test.js, src/i18n.test.js)
 - Set explicit `dir="ltr" lang={learning language}` on German/English text and `dir="rtl" lang="ku"` on Kurdish text, whatever the page direction is.
 
 ### Theming
-- Colors are CSS variables in `src/index.css`: `--bg --card --fg --muted --faint --line --soft --brand --on-brand --link --ok --okbg --bad --badbg --hl`. They are exposed to Tailwind as `text-fg`, `bg-card`, `border-line`, `bg-soft`, `bg-brand`, `text-on-brand`, `text-link`, `text-muted`, `text-faint`.
+- Colors are CSS variables in `src/index.css`: `--bg --card --fg --muted --faint --line --soft --brand --purple --on-brand --link --ok --okbg --bad --badbg --hl`. They are exposed to Tailwind as `text-fg`, `bg-card`, `border-line`, `bg-soft`, `bg-brand`, `text-on-brand`, `text-link`, `text-muted`, `text-faint`.
 - Use these tokens, not raw Tailwind palette colors, so light and dark themes both work.
 - The theme is set by `html[data-theme]`. An inline script in `index.html` applies it before React loads so there's no flash. The default is `dark`.
 - Reusable component classes are defined in `index.css`: `.glass`/`.paper` (cards), `.btn-primary`, `.btn-ghost`, `.btn-danger`, `.btn-mini`, `.chip` (needs `--c`), `.field`, `.opt*` (quiz options), `.tap-word`, `.level-card`, `.level-badge`, `.accent-card` (needs `--accent`), `.page-in` (entry animation), `.meaning-card`.

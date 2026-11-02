@@ -74,7 +74,7 @@ export default function QuizPlay() {
       <div style={{ "--accent": lv.color }} className="glass relative mx-auto max-w-lg overflow-hidden rounded-2xl p-8 text-center sm:p-12">
         {pct >= 80 &&
           Array.from({ length: 16 }, (_, i) => (
-            <i key={i} className="confetti" style={{ left: `${(i * 6.3 + 4) % 96}%`, animationDelay: `${(i % 6) * 0.12}s`, background: ["#22d3ee", "#3b82f6", "#facc15", "#4ade80"][i % 4] }} />
+            <i key={i} className="confetti" style={{ left: `${(i * 6.3 + 4) % 96}%`, animationDelay: `${(i % 6) * 0.12}s`, background: ["#6c97ff", "#a58bfa", "#facc15", "#3b6ef5"][i % 4] }} />
           ))}
         <svg width="150" height="150" viewBox="0 0 140 140" className="mx-auto" aria-hidden="true">
           <circle cx="70" cy="70" r="60" fill="none" style={{ stroke: "var(--line)" }} strokeWidth="10" />

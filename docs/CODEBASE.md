@@ -372,11 +372,11 @@ How the editor reads and writes (`data/storyBundle.js`, pure and unit-tested):
 ## 10. Styling system (`src/index.css`)
 
 - **Fonts**: Figtree for Latin text and Noto Sans Arabic for Kurdish, both imported in CSS. `index.html` also preloads Inter and Roboto, which are not used.
-- **Tokens**: light and dark palettes on `html[data-theme=…]`. Dark is the default (`:root`). They are mapped into Tailwind with `@theme inline` as `fg, muted, faint, line, soft, card, brand, on-brand, link`.
+- **Tokens**: light and dark palettes on `html[data-theme=…]` (blue `--brand`, purple `--purple`). Dark is the default (`:root`). They are mapped into Tailwind with `@theme inline` as `fg, muted, faint, line, soft, card, brand, on-brand, link`.
 - **Background**: two radial "glow" gradients over `--bg`, fixed in place.
 - **Component classes**:
   - Cards: `glass`, `paper`, `panel(-stories|-quiz|-words)`, `accent-card`.
-  - Buttons: `btn-primary` (green gradient), `btn-ghost`, `btn-danger`, `btn-mini`.
+  - Buttons: `btn-primary` (blue-to-purple gradient: `--brand` → `--purple`), `btn-ghost`, `btn-danger`, `btn-mini`.
   - Forms: `field`, `chip`.
   - Quiz: `opt`, `opt-right`, `opt-wrong`, `opt-dim`, `bar-fill`, `ring`, `confetti`.
   - Reader: `tap-word`, `meaning-card`.
